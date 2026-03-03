@@ -1,123 +1,17 @@
-import { useState, useEffect } from "react";
-
-// ── Mock Data ─────────────────────────────────────────────────────────────────
-const MOCK_JOBS = [
-  {
-    id: "TKT-1709001001",
-    customerName: "Ahmad bin Razif",
-    address: "No. 12, Jalan Damai 3, Taman Damai, 50480 Kuala Lumpur",
-    productModel: "Air Conditioner AC-3000X",
-    serialNumber: "AC3000X-20240815-009",
-    complaintType: "Not Cooling",
-    complaintText: "Unit not cooling after 3 months of use. House feels warm even when set to 18°C.",
-    warrantyStatus: "UNDER_WARRANTY",
-    urgencyLevel: "STANDARD",
-    status: "ASSIGNED",
-    assignedTechId: "TECH-001",
-    faultType: null,
-    faultNotes: null,
-    predictedParts: [],
-    partsApproved: false,
-    slaDeadlineAt: new Date(Date.now() + 28 * 60 * 60 * 1000).toISOString(),
-    completedAt: null,
-    compensationCode: null,
-    createdAt: new Date(Date.now() - 20 * 60 * 60 * 1000).toISOString(),
-  },
-  {
-    id: "TKT-1709001002",
-    customerName: "Siti Norzahra bt Kamal",
-    address: "Unit 5-12, Residensi Putra, Jalan PJU 8/3, 47820 Petaling Jaya",
-    productModel: "Water Heater WH-5000P",
-    serialNumber: "WH5000P-20230301-042",
-    complaintType: "Leaking",
-    complaintText: "Water dripping from the bottom of the heater. Getting worse over 2 days.",
-    warrantyStatus: "EXPIRED",
-    urgencyLevel: "CRITICAL",
-    status: "JOB_STARTED",
-    assignedTechId: "TECH-001",
-    faultType: "Leaking Water",
-    faultNotes: "Visible crack on drain valve housing",
-    predictedParts: [
-      { partId: "PART-005", name: "Drain Pump", stock: "OUT", cost: 95 },
-      { partId: "PART-002", name: "Refrigerant Gas R32", stock: "AVAILABLE", cost: 120 },
-    ],
-    partsApproved: false,
-    slaDeadlineAt: new Date(Date.now() - 4 * 60 * 60 * 1000).toISOString(),
-    completedAt: null,
-    compensationCode: null,
-    createdAt: new Date(Date.now() - 12 * 60 * 60 * 1000).toISOString(),
-  },
-  {
-    id: "TKT-1709001003",
-    customerName: "HomeCool Sdn Bhd",
-    address: "Lot 7, Jalan Industri 5/2, Kawasan Perindustrian Puchong, 47100 Puchong",
-    productModel: "Refrigerator RF-2200Q",
-    serialNumber: "RF2200Q-20241201-007",
-    complaintType: "Noisy",
-    complaintText: "Loud rattling noise from compressor area, especially at night.",
-    warrantyStatus: "UNDER_WARRANTY",
-    urgencyLevel: "LOW",
-    status: "COMPLETED",
-    assignedTechId: "TECH-001",
-    faultType: "Noisy",
-    faultNotes: "Loose compressor mounting bracket",
-    predictedParts: [
-      { partId: "PART-003", name: "Fan Motor PCB", stock: "LOW", cost: 210 },
-    ],
-    partsApproved: true,
-    slaDeadlineAt: new Date(Date.now() + 72 * 60 * 60 * 1000).toISOString(),
-    completedAt: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
-    compensationCode: null,
-    createdAt: new Date(Date.now() - 26 * 60 * 60 * 1000).toISOString(),
-  },
-];
-
-const MOCK_ESCALATIONS = [
-  {
-    id: "ESC-001",
-    ticketId: "TKT-1709001002",
-    customerName: "Siti Norzahra bt Kamal",
-    type: "BREACH",
-    message: "SLA deadline passed 4 hours ago. CRITICAL ticket — immediate action required.",
-    triggeredAt: new Date(Date.now() - 4 * 60 * 60 * 1000).toISOString(),
-  },
-  {
-    id: "ESC-002",
-    ticketId: "TKT-1709001001",
-    customerName: "Ahmad bin Razif",
-    type: "REMINDER",
-    message: "70% of SLA time elapsed. Technician reminder sent.",
-    triggeredAt: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
-  },
-  {
-    id: "ESC-003",
-    ticketId: "TKT-DEMO-002",
-    customerName: "Tan Wei Loong",
-    type: "BREACH",
-    message: "No movement on ticket for 50 hours. Customer dissatisfaction signal detected.",
-    triggeredAt: new Date(Date.now() - 6 * 60 * 60 * 1000).toISOString(),
-  },
-];
-
-const PARTS_LOOKUP = {
-  "Not Cooling": [{ partId: "PART-001", name: "Compressor Capacitor", stock: "AVAILABLE", cost: 85 },
-  { partId: "PART-002", name: "Refrigerant Gas R32", stock: "AVAILABLE", cost: 120 }],
-  "Weak Cooling": [{ partId: "PART-001", name: "Compressor Capacitor", stock: "AVAILABLE", cost: 85 },
-  { partId: "PART-002", name: "Refrigerant Gas R32", stock: "AVAILABLE", cost: 120 }],
-  "Noisy": [{ partId: "PART-003", name: "Fan Motor PCB", stock: "LOW", cost: 210 },
-  { partId: "PART-004", name: "Thermostat Sensor", stock: "AVAILABLE", cost: 45 }],
-  "Leaking": [{ partId: "PART-005", name: "Drain Pump", stock: "OUT", cost: 95 },
-  { partId: "PART-002", name: "Refrigerant Gas R32", stock: "AVAILABLE", cost: 120 }],
-  "Leaking Water": [{ partId: "PART-005", name: "Drain Pump", stock: "OUT", cost: 95 },
-  { partId: "PART-002", name: "Refrigerant Gas R32", stock: "AVAILABLE", cost: 120 }],
-  "Not Running": [{ partId: "PART-003", name: "Fan Motor PCB", stock: "LOW", cost: 210 },
-  { partId: "PART-004", name: "Thermostat Sensor", stock: "AVAILABLE", cost: 45 }],
-  "No Power": [{ partId: "PART-003", name: "Fan Motor PCB", stock: "LOW", cost: 210 },
-  { partId: "PART-004", name: "Thermostat Sensor", stock: "AVAILABLE", cost: 45 }],
-};
+import { useState, useEffect, useCallback } from "react";
+import {
+  fetchJobs,
+  fetchJobDetail,
+  updateJobStatus,
+  logFault as apiLogFault,
+  approveParts as apiApproveParts,
+  completeJob as apiCompleteJob,
+  fetchEscalations,
+} from "./api";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 function timeAgo(iso) {
+  if (!iso) return "";
   const diff = Date.now() - new Date(iso).getTime();
   const h = Math.floor(diff / 3600000);
   const m = Math.floor((diff % 3600000) / 60000);
@@ -126,6 +20,7 @@ function timeAgo(iso) {
 }
 
 function timeLeft(iso) {
+  if (!iso) return { label: "N/A", over: false };
   const diff = new Date(iso).getTime() - Date.now();
   if (diff <= 0) return { label: "OVERDUE", over: true };
   const h = Math.floor(diff / 3600000);
@@ -134,13 +29,10 @@ function timeLeft(iso) {
 }
 
 function slaPercent(createdAt, deadlineAt) {
+  if (!createdAt || !deadlineAt) return 0;
   const total = new Date(deadlineAt) - new Date(createdAt);
   const elapsed = Date.now() - new Date(createdAt);
   return Math.min(100, Math.max(0, Math.round((elapsed / total) * 100)));
-}
-
-function genVoucher() {
-  return "DEMO-" + Math.random().toString(36).slice(2, 8).toUpperCase();
 }
 
 // ── Status config ─────────────────────────────────────────────────────────────
@@ -150,6 +42,7 @@ const STATUS_CFG = {
   AWAITING_PARTS: { label: "Awaiting Parts", color: "#7c3aed", bg: "#f3e8ff" },
   COMPLETED: { label: "Completed", color: "#16a34a", bg: "#dcfce7" },
   CANCELLED: { label: "Cancelled", color: "#9c9590", bg: "#f3f1ee" },
+  Open: { label: "Open", color: "#1d5fb3", bg: "#e8f0fc" },
 };
 
 const URGENCY_CFG = {
@@ -162,7 +55,29 @@ const STOCK_CFG = {
   AVAILABLE: { label: "AVAILABLE", color: "#16a34a", bg: "#dcfce7" },
   LOW: { label: "LOW STOCK", color: "#e05c2a", bg: "#fdf0eb" },
   OUT: { label: "OUT OF STOCK", color: "#e11d48", bg: "#ffe4e6" },
+  UNKNOWN: { label: "UNKNOWN", color: "#9c9590", bg: "#f3f1ee" },
 };
+
+// ── Loading Spinner ──────────────────────────────────────────────────────────
+function Spinner({ message = "Loading..." }) {
+  return (
+    <div className="card animate-in" style={{ textAlign: "center", padding: "60px 20px" }}>
+      <div style={{ width: 40, height: 40, border: "3px solid var(--border)", borderTopColor: "var(--brand)", borderRadius: "50%", animation: "spin 0.8s linear infinite", margin: "0 auto 16px" }} />
+      <p style={{ color: "var(--text-muted)", fontSize: 14 }}>{message}</p>
+      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+    </div>
+  );
+}
+
+function ErrorBanner({ message, onRetry }) {
+  return (
+    <div className="card animate-in" style={{ background: "#ffe4e6", border: "1px solid #fecdd3", padding: "20px" }}>
+      <div style={{ fontWeight: 700, color: "#e11d48", marginBottom: 8 }}>Something went wrong</div>
+      <p style={{ fontSize: 13, color: "#9f1239", marginBottom: 16 }}>{message}</p>
+      {onRetry && <button className="btn btn-outline" onClick={onRetry}>Retry</button>}
+    </div>
+  );
+}
 
 // ── Icons (inline SVG as components) ─────────────────────────────────────────
 const Icon = {
@@ -177,7 +92,6 @@ const Icon = {
   clock: () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" /></svg>,
   phone: () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12 19.79 19.79 0 0 1 1.61 3.53 2 2 0 0 1 3.6 1.37h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 8.1a16 16 0 0 0 6 6l.91-.91a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 21.73 15.5l.19 1.42z" /></svg>,
   user: () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" /></svg>,
-  gift: () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="20 12 20 22 4 22 4 12" /><rect x="2" y="7" width="20" height="5" /><line x1="12" y1="22" x2="12" y2="7" /><path d="M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z" /><path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z" /></svg>,
 };
 
 
@@ -201,7 +115,7 @@ function LoginPage({ onLogin }) {
     <div className="login-wrap">
       <div className="card login-card animate-in">
         <div className="login-header">
-          <div className="display-font" style={{ fontSize: 13, textTransform: "uppercase", letterSpacing: "0.1em", fontWeight: 700, marginBottom: 8, opacity: 0.8 }}>AirHome · Field Ops</div>
+          <div className="display-font" style={{ fontSize: 13, textTransform: "uppercase", letterSpacing: "0.1em", fontWeight: 700, marginBottom: 8, opacity: 0.8 }}>Fiamma · Field Ops</div>
           <h2 className="display-font">Technician Portal</h2>
           <p>Sign in to view your assigned jobs</p>
         </div>
@@ -231,7 +145,7 @@ function LoginPage({ onLogin }) {
 // ══════════════════════════════════════════════════════════════════════════════
 // MY JOBS PAGE
 // ══════════════════════════════════════════════════════════════════════════════
-function MyJobsPage({ jobs, onSelectJob }) {
+function MyJobsPage({ jobs, stats, loading, error, onSelectJob, onRetry }) {
   const active = jobs.filter(j => j.status !== "COMPLETED" && j.status !== "CANCELLED");
   const done = jobs.filter(j => j.status === "COMPLETED");
 
@@ -239,12 +153,12 @@ function MyJobsPage({ jobs, onSelectJob }) {
     const urg = URGENCY_CFG[job.urgencyLevel] || URGENCY_CFG.STANDARD;
     const stat = STATUS_CFG[job.status] || STATUS_CFG.ASSIGNED;
     const sla = timeLeft(job.slaDeadlineAt);
-    const pct = slaPercent(job.createdAt, job.slaDeadlineAt);
+    const pct = job.slaPercentage != null ? Math.round(job.slaPercentage) : slaPercent(job.createdAt, job.slaDeadlineAt);
     const fillColor = pct >= 100 ? "var(--accent)" : "var(--brand)";
 
     return (
       <div className="card card-hover mb-16" onClick={() => onSelectJob(job)} style={{ cursor: "pointer", display: "flex", alignItems: "center", gap: "20px" }}>
-        <div style={{ padding: "12px", background: "var(--bg-subtle)", borderRadius: "12px", display: "flex", alignItems: "center", justifyCenter: "center" }}>
+        <div style={{ padding: "12px", background: "var(--bg-subtle)", borderRadius: "12px", display: "flex", alignItems: "center", justifyContent: "center" }}>
           <div style={{ width: 48, height: 48, background: stat.bg, borderRadius: 10, display: "flex", alignItems: "center", justifyContent: "center", color: stat.color }}>
             <Icon.tool />
           </div>
@@ -279,7 +193,7 @@ function MyJobsPage({ jobs, onSelectJob }) {
               </div>
             </div>
             <div style={{ fontSize: 12, color: "var(--text-muted)", display: "flex", alignItems: "center", gap: 4 }}>
-              <Icon.map style={{ width: 14 }} /> {job.address.split(',')[0]}
+              <Icon.clock style={{ width: 14 }} /> {job.slaBreached ? "BREACHED" : sla.label}
             </div>
           </div>
         </div>
@@ -287,8 +201,8 @@ function MyJobsPage({ jobs, onSelectJob }) {
     );
   }
 
-  const open = active.filter(j => j.status !== "COMPLETED");
-  const breached = active.filter(j => slaPercent(j.createdAt, j.slaDeadlineAt) >= 100).length;
+  if (loading) return <Spinner message="Fetching your assignments..." />;
+  if (error) return <ErrorBanner message={error} onRetry={onRetry} />;
 
   return (
     <div className="animate-in">
@@ -300,15 +214,15 @@ function MyJobsPage({ jobs, onSelectJob }) {
       <div className="stats-grid">
         <div className="card">
           <div className="stat-label">Total Assigned</div>
-          <div className="stat-value">{active.length}</div>
+          <div className="stat-value">{stats.active}</div>
         </div>
         <div className="card">
           <div className="stat-label">SLA Breached</div>
-          <div className="stat-value" style={{ color: breached > 0 ? "var(--accent)" : "inherit" }}>{breached}</div>
+          <div className="stat-value" style={{ color: stats.breached > 0 ? "var(--accent)" : "inherit" }}>{stats.breached}</div>
         </div>
         <div className="card">
           <div className="stat-label">Completed</div>
-          <div className="stat-value" style={{ color: "var(--brand)" }}>{done.length}</div>
+          <div className="stat-value" style={{ color: "var(--brand)" }}>{stats.completed}</div>
         </div>
       </div>
 
@@ -321,7 +235,7 @@ function MyJobsPage({ jobs, onSelectJob }) {
       {active.length > 0 ? (
         active.sort((a, b) => {
           const order = { CRITICAL: 0, STANDARD: 1, LOW: 2 };
-          return order[a.urgencyLevel] - order[b.urgencyLevel];
+          return (order[a.urgencyLevel] ?? 1) - (order[b.urgencyLevel] ?? 1);
         }).map(j => <JobItem key={j.id} job={j} />)
       ) : (
         <div className="card" style={{ textAlign: "center", padding: "48px", color: "var(--text-muted)" }}>
@@ -344,32 +258,51 @@ function MyJobsPage({ jobs, onSelectJob }) {
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
-// JOB DETAIL PAGE
+// JOB DETAIL PAGE — fetches full detail from API on mount
 // ══════════════════════════════════════════════════════════════════════════════
-function JobDetailPage({ job: initialJob, onBack, onUpdate }) {
-  const [job, setJob] = useState(initialJob);
+function JobDetailPage({ jobId, onBack, onJobMutated }) {
+  const [job, setJob] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [view, setView] = useState("detail"); // detail | fault | parts | complete
 
-  function updateJob(patch) {
-    const updated = { ...job, ...patch };
-    setJob(updated);
-    onUpdate(updated);
+  const loadDetail = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const detail = await fetchJobDetail(jobId);
+      setJob(detail);
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setLoading(false);
+    }
+  }, [jobId]);
+
+  useEffect(() => { loadDetail(); }, [loadDetail]);
+
+  // After any mutation, reload both the detail and the parent job list
+  async function reloadAfterMutation() {
+    await loadDetail();
+    onJobMutated();
   }
+
+  if (loading) return <Spinner message="Loading job details..." />;
+  if (error) return <ErrorBanner message={error} onRetry={loadDetail} />;
+  if (!job) return null;
 
   const urg = URGENCY_CFG[job.urgencyLevel] || URGENCY_CFG.STANDARD;
   const stat = STATUS_CFG[job.status] || STATUS_CFG.ASSIGNED;
   const sla = timeLeft(job.slaDeadlineAt);
-  const pct = slaPercent(job.createdAt, job.slaDeadlineAt);
+  const pct = job.slaPercentage != null ? Math.round(job.slaPercentage) : slaPercent(job.createdAt, job.slaDeadlineAt);
 
-  // Timeline steps
   const STEPS = [
-    { key: "NEW", label: "Ticket Created", icon: <Icon.user /> },
-    { key: "ASSIGNED", label: "Technician Assigned", icon: <Icon.tool /> },
+    { key: "ASSIGNED", label: "Ticket Assigned", icon: <Icon.user /> },
     { key: "JOB_STARTED", label: "Job Started", icon: <Icon.tool /> },
     { key: "AWAITING_PARTS", label: "Awaiting Parts", icon: <Icon.package /> },
     { key: "COMPLETED", label: "Completed", icon: <Icon.check /> },
   ];
-  const ORDER = ["NEW", "ASSIGNED", "JOB_STARTED", "AWAITING_PARTS", "COMPLETED"];
+  const ORDER = ["ASSIGNED", "JOB_STARTED", "AWAITING_PARTS", "COMPLETED"];
   const curIdx = ORDER.indexOf(job.status);
 
   return (
@@ -396,7 +329,7 @@ function JobDetailPage({ job: initialJob, onBack, onUpdate }) {
             <div style={{ fontWeight: 600 }}>{job.productModel}</div>
           </div>
           <div style={{ background: "#fff", padding: "16px" }}>
-            <div className="stat-label" style={{ marginTop: 0 }}>Serial Number</div>
+            <div className="stat-label" style={{ marginTop: 0 }}>Serial / Product ID</div>
             <div className="mono">{job.serialNumber}</div>
           </div>
           <div style={{ background: "#fff", padding: "16px" }}>
@@ -430,9 +363,13 @@ function JobDetailPage({ job: initialJob, onBack, onUpdate }) {
         <div className="card">
           <h3 className="display-font mb-16" style={{ fontSize: 20 }}>Actions</h3>
 
-          {job.status === "ASSIGNED" && (
+          {job.status === "ASSIGNED" && view === "detail" && (
             <div style={{ display: "flex", gap: 12 }}>
-              <button className="btn btn-primary" style={{ flex: 1 }} onClick={() => { updateJob({ status: "JOB_STARTED" }); setView("fault"); }}>
+              <button className="btn btn-primary" style={{ flex: 1 }} onClick={async () => {
+                await updateJobStatus(job.id, "JOB_STARTED");
+                await reloadAfterMutation();
+                setView("fault");
+              }}>
                 Start Service Job
               </button>
               <button className="btn btn-outline">
@@ -441,7 +378,7 @@ function JobDetailPage({ job: initialJob, onBack, onUpdate }) {
             </div>
           )}
 
-          {job.status === "JOB_STARTED" && view === "detail" && (
+          {job.status === "JOB_STARTED" && view === "detail" && !job.faultType && (
             <button className="btn btn-primary btn-full" onClick={() => setView("fault")}>
               Log Diagnostic Fault
             </button>
@@ -465,9 +402,9 @@ function JobDetailPage({ job: initialJob, onBack, onUpdate }) {
             </div>
           )}
 
-          {view === "fault" && <LogFaultView job={job} updateJob={updateJob} setView={setView} />}
-          {view === "parts" && <PartsView job={job} updateJob={updateJob} setView={setView} />}
-          {view === "complete" && <CompleteJobView job={job} updateJob={updateJob} setView={setView} onBack={onBack} />}
+          {view === "fault" && <LogFaultView job={job} onDone={reloadAfterMutation} setView={setView} />}
+          {view === "parts" && <PartsView job={job} onDone={reloadAfterMutation} setView={setView} />}
+          {view === "complete" && <CompleteJobView job={job} onDone={reloadAfterMutation} setView={setView} onBack={onBack} />}
         </div>
 
         <div className="card">
@@ -480,7 +417,7 @@ function JobDetailPage({ job: initialJob, onBack, onUpdate }) {
 
               return (
                 <div key={step.key} className="timeline-item">
-                  <div className={`timeline-dot-wrap`}>
+                  <div className="timeline-dot-wrap">
                     <div className={`timeline-dot ${isDone ? 'done' : isActive ? 'active' : ''}`}>
                       {isDone ? <Icon.check style={{ width: 14 }} /> : step.icon}
                     </div>
@@ -503,24 +440,30 @@ function JobDetailPage({ job: initialJob, onBack, onUpdate }) {
   );
 }
 
-// ── Log Fault sub-view ─────────────────────────────────────────────────────────
-function LogFaultView({ job, updateJob, setView }) {
+// ── Log Fault sub-view — calls POST /portal/tickets/{id}/fault ───────────────
+function LogFaultView({ job, onDone, setView }) {
   const [faultType, setFaultType] = useState(job.faultType || "");
   const [notes, setNotes] = useState(job.faultNotes || "");
-  const [submitted, setSubmitted] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [result, setResult] = useState(null);
+  const [error, setError] = useState(null);
 
-  function submit() {
+  async function submit() {
     if (!faultType) return;
-    const predicted = PARTS_LOOKUP[faultType] || PARTS_LOOKUP["Not Cooling"];
-    updateJob({ faultType, faultNotes: notes, predictedParts: predicted });
-    setSubmitted(true);
+    setSubmitting(true);
+    setError(null);
+    try {
+      const res = await apiLogFault(job.id, faultType, notes);
+      setResult(res);
+      await onDone();
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setSubmitting(false);
+    }
   }
 
-  if (submitted) {
-    const parts = PARTS_LOOKUP[faultType] || [];
-    const total = parts.reduce((s, p) => s + p.cost, 0);
-    const autoApprove = job.warrantyStatus === "UNDER_WARRANTY" && total <= 500;
-
+  if (result) {
     return (
       <div className="animate-in" style={{ marginTop: 24 }}>
         <div style={{ padding: "20px", background: "var(--brand-light)", borderRadius: "12px", border: "1px solid var(--brand-mid)" }}>
@@ -530,7 +473,10 @@ function LogFaultView({ job, updateJob, setView }) {
             </div>
             <div>
               <div style={{ fontWeight: 700, color: "var(--brand)", marginBottom: 4 }}>Fault Analysis Recorded</div>
-              <p style={{ fontSize: 13, color: "var(--brand-mid)", marginBottom: 16 }}>Diagnostic: <strong>{faultType}</strong>. {autoApprove ? "Components auto-approved under warranty." : "Submitted for manager authorization."}</p>
+              <p style={{ fontSize: 13, color: "var(--brand-mid)", marginBottom: 4 }}>
+                Diagnostic: <strong>{result.faultType}</strong> — {result.predictedParts.length} parts predicted (RM {result.totalCost.toFixed(2)})
+              </p>
+              <p style={{ fontSize: 12, color: "var(--text-muted)", marginBottom: 16 }}>{result.approvalReason}</p>
               <button className="btn btn-primary" onClick={() => setView("parts")}>
                 View Required Parts
               </button>
@@ -544,6 +490,7 @@ function LogFaultView({ job, updateJob, setView }) {
   return (
     <div className="animate-in" style={{ marginTop: 24 }}>
       <h3 className="display-font mb-16" style={{ fontSize: 20 }}>Diagnostic Log</h3>
+      {error && <ErrorBanner message={error} />}
       <div className="form-group">
         <label className="form-label">Primary Fault Type</label>
         <select className="form-control" value={faultType} onChange={e => setFaultType(e.target.value)}>
@@ -564,8 +511,8 @@ function LogFaultView({ job, updateJob, setView }) {
         <textarea className="form-control" placeholder="Describe the technical findings on-site..." value={notes} onChange={e => setNotes(e.target.value)} />
       </div>
       <div style={{ display: "flex", gap: 12 }}>
-        <button className="btn btn-primary" style={{ flex: 1 }} onClick={submit} disabled={!faultType}>
-          Update Service Record
+        <button className="btn btn-primary" style={{ flex: 1 }} onClick={submit} disabled={!faultType || submitting}>
+          {submitting ? "Submitting..." : "Update Service Record"}
         </button>
         <button className="btn btn-outline" onClick={() => setView("detail")}>Cancel</button>
       </div>
@@ -573,19 +520,23 @@ function LogFaultView({ job, updateJob, setView }) {
   );
 }
 
-// ── Parts View sub-view ───────────────────────────────────────────────────────
-function PartsView({ job, updateJob, setView }) {
+// ── Parts View — uses predicted parts from API, calls approve-parts ──────────
+function PartsView({ job, onDone, setView }) {
   const parts = job.predictedParts || [];
   const total = parts.reduce((s, p) => s + p.cost, 0);
-  const autoApprove = job.warrantyStatus === "UNDER_WARRANTY" && total <= 500;
   const [approved, setApproved] = useState(job.partsApproved);
+  const [submitting, setSubmitting] = useState(false);
 
-  function requestParts() {
-    if (autoApprove) {
-      updateJob({ partsApproved: true, status: "AWAITING_PARTS" });
+  async function requestParts() {
+    setSubmitting(true);
+    try {
+      await apiApproveParts(job.id, true);
       setApproved(true);
-    } else {
-      updateJob({ status: "AWAITING_PARTS" });
+      await onDone();
+    } catch (e) {
+      alert(`Failed: ${e.message}`);
+    } finally {
+      setSubmitting(false);
     }
   }
 
@@ -596,82 +547,90 @@ function PartsView({ job, updateJob, setView }) {
         <span style={{ fontSize: 11, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.05em" }}>AI-Predicted List</span>
       </div>
 
-      <div style={{ border: "1px solid var(--border)", borderRadius: "12px", overflow: "hidden", marginBottom: 20 }}>
-        <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 14 }}>
-          <thead>
-            <tr style={{ background: "var(--bg-subtle)", textAlign: "left" }}>
-              <th style={{ padding: "12px 16px", fontWeight: 700, fontSize: 12, color: "var(--text-secondary)" }}>PART NAME</th>
-              <th style={{ padding: "12px 16px", fontWeight: 700, fontSize: 12, color: "var(--text-secondary)" }}>STATUS</th>
-              <th style={{ padding: "12px 16px", fontWeight: 700, fontSize: 12, color: "var(--text-secondary)", textAlign: "right" }}>COST</th>
-            </tr>
-          </thead>
-          <tbody>
-            {parts.map(p => {
-              const stock = STOCK_CFG[p.stock] || STOCK_CFG.AVAILABLE;
-              return (
-                <tr key={p.partId} style={{ borderTop: "1px solid var(--border)" }}>
-                  <td style={{ padding: "12px 16px" }}>
-                    <div style={{ fontWeight: 600 }}>{p.name}</div>
-                    <div className="mono" style={{ fontSize: 11, color: "var(--text-muted)" }}>{p.partId}</div>
-                  </td>
-                  <td style={{ padding: "12px 16px" }}>
-                    <span className="badge" style={{ color: stock.color, background: stock.bg, fontSize: 10 }}>{stock.label}</span>
-                  </td>
-                  <td style={{ padding: "12px 16px", textAlign: "right", fontWeight: 600 }}>
-                    RM {p.cost.toFixed(2)}
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-          <tfoot>
-            <tr style={{ background: "var(--bg-subtle)", borderTop: "1px solid var(--border)" }}>
-              <td colSpan="2" style={{ padding: "12px 16px", fontWeight: 700 }}>Total Estimated Cost</td>
-              <td style={{ padding: "12px 16px", textAlign: "right", fontWeight: 800, color: "var(--brand)", fontSize: 16 }}>RM {total.toFixed(2)}</td>
-            </tr>
-          </tfoot>
-        </table>
-      </div>
-
-      <div style={{ padding: "16px", background: autoApprove ? "var(--brand-light)" : "var(--accent-light)", borderRadius: "12px", marginBottom: 24, border: "1px solid", borderColor: autoApprove ? "var(--brand-mid)" : "var(--accent)" }}>
-        <div style={{ fontWeight: 700, color: autoApprove ? "var(--brand)" : "var(--accent)", marginBottom: 4 }}>
-          {autoApprove ? "Warranty Coverage Applicable" : "Approval Required"}
+      {parts.length === 0 ? (
+        <div className="card" style={{ textAlign: "center", padding: "32px", color: "var(--text-muted)" }}>
+          No parts predicted. Please log a fault first.
         </div>
-        <p style={{ fontSize: 13, color: "var(--text-secondary)" }}>
-          {autoApprove
-            ? "This service is eligible for automatic part approval under standard warranty terms."
-            : "The estimated cost exceeds the auto-approval threshold. Manager authorization is required."}
-        </p>
-      </div>
-
-      <div style={{ display: "flex", gap: 12 }}>
-        {!approved ? (
-          <button className="btn btn-primary" style={{ flex: 1 }} onClick={requestParts}>
-            {autoApprove ? "Auto-Approve & Request Parts" : "Submit for Approval"}
-          </button>
-        ) : (
-          <div style={{ flex: 1, padding: "10px", background: "var(--brand)", color: "#fff", borderRadius: "8px", textAlign: "center", fontWeight: 600 }}>
-            Parts Requested & Approved
+      ) : (
+        <>
+          <div style={{ border: "1px solid var(--border)", borderRadius: "12px", overflow: "hidden", marginBottom: 20 }}>
+            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 14 }}>
+              <thead>
+                <tr style={{ background: "var(--bg-subtle)", textAlign: "left" }}>
+                  <th style={{ padding: "12px 16px", fontWeight: 700, fontSize: 12, color: "var(--text-secondary)" }}>PART NAME</th>
+                  <th style={{ padding: "12px 16px", fontWeight: 700, fontSize: 12, color: "var(--text-secondary)" }}>STATUS</th>
+                  <th style={{ padding: "12px 16px", fontWeight: 700, fontSize: 12, color: "var(--text-secondary)", textAlign: "right" }}>COST</th>
+                </tr>
+              </thead>
+              <tbody>
+                {parts.map(p => {
+                  const stock = STOCK_CFG[p.stock] || STOCK_CFG.UNKNOWN;
+                  return (
+                    <tr key={p.partId} style={{ borderTop: "1px solid var(--border)" }}>
+                      <td style={{ padding: "12px 16px" }}>
+                        <div style={{ fontWeight: 600 }}>{p.name}</div>
+                        <div className="mono" style={{ fontSize: 11, color: "var(--text-muted)" }}>{p.partId}</div>
+                      </td>
+                      <td style={{ padding: "12px 16px" }}>
+                        <span className="badge" style={{ color: stock.color, background: stock.bg, fontSize: 10 }}>{stock.label}</span>
+                      </td>
+                      <td style={{ padding: "12px 16px", textAlign: "right", fontWeight: 600 }}>
+                        RM {p.cost.toFixed(2)}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+              <tfoot>
+                <tr style={{ background: "var(--bg-subtle)", borderTop: "1px solid var(--border)" }}>
+                  <td colSpan="2" style={{ padding: "12px 16px", fontWeight: 700 }}>Total Estimated Cost</td>
+                  <td style={{ padding: "12px 16px", textAlign: "right", fontWeight: 800, color: "var(--brand)", fontSize: 16 }}>RM {total.toFixed(2)}</td>
+                </tr>
+              </tfoot>
+            </table>
           </div>
-        )}
-        <button className="btn btn-outline" onClick={() => setView("detail")}>Back to Details</button>
-      </div>
+
+          <div style={{ display: "flex", gap: 12 }}>
+            {!approved ? (
+              <button className="btn btn-primary" style={{ flex: 1 }} onClick={requestParts} disabled={submitting}>
+                {submitting ? "Submitting..." : "Request Parts Approval"}
+              </button>
+            ) : (
+              <div style={{ flex: 1, padding: "10px", background: "var(--brand)", color: "#fff", borderRadius: "8px", textAlign: "center", fontWeight: 600 }}>
+                Parts Requested & Approved
+              </div>
+            )}
+            <button className="btn btn-outline" onClick={() => setView("detail")}>Back to Details</button>
+          </div>
+        </>
+      )}
     </div>
   );
 }
 
-// ── Complete Job sub-view ─────────────────────────────────────────────────────
-function CompleteJobView({ job, updateJob, setView, onBack }) {
-  const [code, setCode] = useState("");
-  const [confirmed, setConfirmed] = useState(false);
+// ── Complete Job — calls POST /portal/tickets/{id}/complete ──────────────────
+function CompleteJobView({ job, onDone, setView, onBack }) {
+  const [workNotes, setWorkNotes] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const [result, setResult] = useState(null);
+  const [error, setError] = useState(null);
 
-  function finish() {
-    const voucher = genVoucher();
-    updateJob({ status: "COMPLETED", completedAt: new Date().toISOString(), compensationCode: voucher });
-    setConfirmed(true);
+  async function finish() {
+    setSubmitting(true);
+    setError(null);
+    try {
+      const partIds = (job.predictedParts || []).map(p => p.partId);
+      const res = await apiCompleteJob(job.id, partIds, workNotes || "Service completed");
+      setResult(res);
+      await onDone();
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setSubmitting(false);
+    }
   }
 
-  if (confirmed) {
+  if (result) {
     return (
       <div className="animate-in" style={{ marginTop: 24, textAlign: "center" }}>
         <div style={{ padding: "32px", background: "var(--brand-light)", borderRadius: "20px", border: "1px dashed var(--brand-mid)" }}>
@@ -679,12 +638,15 @@ function CompleteJobView({ job, updateJob, setView, onBack }) {
             <Icon.check style={{ width: 32 }} />
           </div>
           <h2 className="display-font" style={{ fontSize: 24, marginBottom: 8 }}>Service Completed</h2>
-          <p style={{ color: "var(--text-secondary)", marginBottom: 24 }}>The ticket has been closed successfully. A satisfaction survey has been sent to the customer.</p>
+          <p style={{ color: "var(--text-secondary)", marginBottom: 24 }}>{result.message}</p>
 
-          <div style={{ padding: "20px", background: "#fff", borderRadius: "12px", border: "1px solid var(--border)", marginBottom: 24 }}>
-            <div style={{ fontSize: 11, fontWeight: 700, color: "var(--brand)", textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 8 }}>Customer Compensation Code</div>
-            <div className="mono" style={{ fontSize: 24, fontWeight: 800, letterSpacing: "0.1em", color: "var(--text-primary)" }}>{job.compensationCode}</div>
-          </div>
+          {result.compensationCode && (
+            <div style={{ padding: "20px", background: "#fff", borderRadius: "12px", border: "1px solid var(--border)", marginBottom: 24 }}>
+              <div style={{ fontSize: 11, fontWeight: 700, color: "var(--brand)", textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 8 }}>Customer Compensation Code</div>
+              <div className="mono" style={{ fontSize: 24, fontWeight: 800, letterSpacing: "0.1em", color: "var(--text-primary)" }}>{result.compensationCode}</div>
+              <div style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 8 }}>SLA was breached — compensation voucher auto-generated.</div>
+            </div>
+          )}
 
           <button className="btn btn-primary btn-full" onClick={onBack}>
             Return to Dashboard
@@ -699,14 +661,16 @@ function CompleteJobView({ job, updateJob, setView, onBack }) {
       <h3 className="display-font mb-16" style={{ fontSize: 20 }}>Finalize Service</h3>
       <p style={{ fontSize: 14, color: "var(--text-secondary)", marginBottom: 20 }}>Please confirm all repairs are tested and the customer is satisfied before closing this ticket.</p>
 
+      {error && <ErrorBanner message={error} />}
+
       <div className="form-group">
-        <label className="form-label">Service Completion Code (Optional)</label>
-        <input className="form-control" placeholder="Enter code if provided by customer..." value={code} onChange={e => setCode(e.target.value)} />
+        <label className="form-label">Work Done Notes</label>
+        <textarea className="form-control" style={{ minHeight: 100 }} placeholder="Describe the repairs performed..." value={workNotes} onChange={e => setWorkNotes(e.target.value)} />
       </div>
 
       <div style={{ display: "flex", gap: 12 }}>
-        <button className="btn btn-primary" style={{ flex: 1 }} onClick={finish}>
-          Confirm & Close Ticket
+        <button className="btn btn-primary" style={{ flex: 1 }} onClick={finish} disabled={submitting}>
+          {submitting ? "Closing..." : "Confirm & Close Ticket"}
         </button>
         <button className="btn btn-outline" onClick={() => setView("detail")}>Cancel</button>
       </div>
@@ -715,14 +679,33 @@ function CompleteJobView({ job, updateJob, setView, onBack }) {
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
-// ESCALATION MONITOR PAGE
+// ESCALATION MONITOR PAGE — fetches from GET /portal/escalations
 // ══════════════════════════════════════════════════════════════════════════════
-function EscalationPage({ jobs }) {
-  const breaches = MOCK_ESCALATIONS.filter(e => e.type === "BREACH");
-  const reminders = MOCK_ESCALATIONS.filter(e => e.type === "REMINDER");
+function EscalationPage() {
+  const [data, setData] = useState({ escalations: [], breachCount: 0, reminderCount: 0 });
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await fetchEscalations();
+      setData(res);
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => { load(); }, [load]);
+
+  const breaches = data.escalations.filter(e => e.type === "BREACH" || e.type === "SLA_BREACH");
+  const reminders = data.escalations.filter(e => e.type !== "BREACH" && e.type !== "SLA_BREACH");
 
   function EscItem({ e }) {
-    const isBreach = e.type === "BREACH";
+    const isBreach = e.type === "BREACH" || e.type === "SLA_BREACH";
     return (
       <div className="card card-hover mb-16 animate-in" style={{ borderLeft: `4px solid ${isBreach ? 'var(--accent)' : 'var(--brand)'}`, display: "flex", gap: "20px", alignItems: "center" }}>
         <div style={{ background: isBreach ? "var(--accent-light)" : "var(--brand-light)", color: isBreach ? "var(--accent)" : "var(--brand)", padding: "12px", borderRadius: "12px" }}>
@@ -745,6 +728,9 @@ function EscalationPage({ jobs }) {
     );
   }
 
+  if (loading) return <Spinner message="Loading escalation data..." />;
+  if (error) return <ErrorBanner message={error} onRetry={load} />;
+
   return (
     <div className="animate-in">
       <div className="mb-16">
@@ -755,11 +741,11 @@ function EscalationPage({ jobs }) {
       <div className="stats-grid">
         <div className="card">
           <div className="stat-label">Critical Breaches</div>
-          <div className="stat-value" style={{ color: breaches.length > 0 ? "var(--accent)" : "inherit" }}>{breaches.length}</div>
+          <div className="stat-value" style={{ color: data.breachCount > 0 ? "var(--accent)" : "inherit" }}>{data.breachCount}</div>
         </div>
         <div className="card">
           <div className="stat-label">Active Reminders</div>
-          <div className="stat-value" style={{ color: "var(--brand)" }}>{reminders.length}</div>
+          <div className="stat-value" style={{ color: "var(--brand)" }}>{data.reminderCount}</div>
         </div>
       </div>
 
@@ -769,8 +755,8 @@ function EscalationPage({ jobs }) {
         <div style={{ height: 1, flex: 1, background: "var(--border)" }} />
       </div>
 
-      {[...breaches, ...reminders].length > 0 ? (
-        [...breaches, ...reminders].map(e => <EscItem key={e.id} e={e} />)
+      {data.escalations.length > 0 ? (
+        data.escalations.map(e => <EscItem key={e.id} e={e} />)
       ) : (
         <div className="card" style={{ textAlign: "center", padding: "48px", color: "var(--text-muted)" }}>
           The operations queue is currently healthy.
@@ -781,19 +767,47 @@ function EscalationPage({ jobs }) {
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
-// ROOT APP
+// ROOT APP — Fetches jobs from API on login
 // ══════════════════════════════════════════════════════════════════════════════
 export default function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [jobs, setJobs] = useState(MOCK_JOBS);
+  const [jobs, setJobs] = useState([]);
+  const [stats, setStats] = useState({ total: 0, active: 0, breached: 0, completed: 0 });
   const [selectedJobId, setSelectedJobId] = useState(null);
   const [view, setView] = useState("jobs"); // jobs | alerts
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+  const [alertBadge, setAlertBadge] = useState(0);
 
-  const selectedJob = jobs.find(j => j.id === selectedJobId);
+  const loadJobs = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const data = await fetchJobs("TECH-001");
+      setJobs(data.jobs);
+      setStats({ total: data.total, active: data.active, breached: data.breached, completed: data.completed });
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
-  function updateJob(updated) {
-    setJobs(jobs.map(j => j.id === updated.id ? updated : j));
-  }
+  // Load alert badge count
+  const loadAlertCount = useCallback(async () => {
+    try {
+      const esc = await fetchEscalations();
+      setAlertBadge(esc.breachCount + esc.reminderCount);
+    } catch (_) { /* silent */ }
+  }, []);
+
+  // Load jobs when logged in
+  useEffect(() => {
+    if (isLoggedIn) {
+      loadJobs();
+      loadAlertCount();
+    }
+  }, [isLoggedIn, loadJobs, loadAlertCount]);
 
   if (!isLoggedIn) return <LoginPage onLogin={() => setIsLoggedIn(true)} />;
 
@@ -815,7 +829,7 @@ export default function App() {
               My Jobs
             </button>
             <button onClick={() => { setView("alerts"); setSelectedJobId(null); }} style={{ background: "none", border: "none", padding: "20px 0", cursor: "pointer", fontSize: 14, fontWeight: 700, color: view === "alerts" ? "var(--brand)" : "var(--text-secondary)", borderBottom: view === "alerts" ? "2px solid var(--brand)" : "2px solid transparent", transition: "all 0.2s", display: "flex", alignItems: "center", gap: 6 }}>
-              Alerts <span style={{ background: "var(--accent)", color: "#fff", fontSize: 10, padding: "1px 6px", borderRadius: 10 }}>3</span>
+              Alerts {alertBadge > 0 && <span style={{ background: "var(--accent)", color: "#fff", fontSize: 10, padding: "1px 6px", borderRadius: 10 }}>{alertBadge}</span>}
             </button>
           </nav>
 
@@ -833,24 +847,28 @@ export default function App() {
       <main className="container mt-32">
         {selectedJobId ? (
           <JobDetailPage
-            job={selectedJob}
+            jobId={selectedJobId}
             onBack={() => setSelectedJobId(null)}
-            onUpdate={updateJob}
+            onJobMutated={loadJobs}
           />
         ) : view === "alerts" ? (
-          <EscalationPage jobs={jobs} />
+          <EscalationPage />
         ) : (
           <MyJobsPage
             jobs={jobs}
+            stats={stats}
+            loading={loading}
+            error={error}
             onSelectJob={j => setSelectedJobId(j.id)}
+            onRetry={loadJobs}
           />
         )}
       </main>
 
       <footer style={{ marginTop: 60, padding: "40px 0", borderTop: "1px solid var(--border)", textAlign: "center" }}>
         <div className="container">
-          <div className="display-font" style={{ fontSize: 18, fontWeight: 700, marginBottom: 8 }}>AirHome Field Operations</div>
-          <div style={{ fontSize: 12, color: "var(--text-muted)" }}>© 2026 AirHome Services. Internal Technician Use Only.</div>
+          <div className="display-font" style={{ fontSize: 18, fontWeight: 700, marginBottom: 8 }}>Fiamma Field Operations</div>
+          <div style={{ fontSize: 12, color: "var(--text-muted)" }}>© 2026 Fiamma Services. Internal Technician Use Only.</div>
         </div>
       </footer>
     </div>
