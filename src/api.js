@@ -1,6 +1,4 @@
 // ── Centralized API Client for Technician Portal ────────────────────────────
-// Connects to the FastAPI backend and normalizes snake_case → camelCase
-
 const API_BASE = "https://backend-sales-support-evepbqhwfjcdeqaz.canadacentral-01.azurewebsites.net";
 
 // ── Generic fetch wrapper ────────────────────────────────────────────────────
@@ -24,7 +22,11 @@ async function apiFetch(path, options = {}) {
         return res.json();
     } catch (err) {
         if (err.message === "Failed to fetch" || err.message === "Load failed") {
-            throw new Error("Network error (possibly CORS). Ensure you are running on http://localhost:5173.");
+            const isLocal = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1";
+            const msg = isLocal
+                ? "Network error (possibly CORS). Ensure you are running on http://localhost:5173."
+                : `Network error (possibly CORS). Ensure the backend allows requests from ${window.location.origin}`;
+            throw new Error(msg);
         }
         throw err;
     }
