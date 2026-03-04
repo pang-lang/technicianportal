@@ -1,5 +1,5 @@
-import { useState, useEffect } from "react";
-import { getAdminFeedback, getPartsAnalytics } from "./api";
+import { useState, useEffect, useCallback } from "react";
+import { getAdminFeedback, getPartsAnalytics, fetchPendingApprovals, approveOrRejectParts } from "./api";
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -73,6 +73,219 @@ function BarChart({ data }) {
   );
 }
 
+// ── Icons ────────────────────────────────────────────────────────────────────
+const Icon = {
+  refresh: () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 14, height: 14 }}><polyline points="23 4 23 10 17 10" /><polyline points="1 20 1 14 7 14" /><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" /></svg>,
+  mail:    () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 14, height: 14 }}><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" /><polyline points="22,6 12,13 2,6" /></svg>,
+  check:   () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ width: 16, height: 16 }}><polyline points="20 6 9 17 4 12" /></svg>,
+};
+
+// ── Stock Config ─────────────────────────────────────────────────────────────
+const STOCK_CFG = {
+  AVAILABLE: { label: "AVAILABLE",    color: "#16a34a", bg: "#dcfce7" },
+  LOW:       { label: "LOW STOCK",    color: "#e05c2a", bg: "#fdf0eb" },
+  OUT:       { label: "OUT OF STOCK", color: "#e11d48", bg: "#ffe4e6" },
+  UNKNOWN:   { label: "UNKNOWN",      color: "#9c9590", bg: "#f3f1ee" },
+};
+
+// ── Divider Component ────────────────────────────────────────────────────────
+function Divider({ label }) {
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 16 }}>
+      <div style={{ height: 1, flex: 1, background: "var(--border)" }} />
+      <span style={{ fontSize: 12, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.1em", color: "var(--text-muted)" }}>{label}</span>
+      <div style={{ height: 1, flex: 1, background: "var(--border)" }} />
+    </div>
+  );
+}
+
+// ── Parts Approval Tab Component ─────────────────────────────────────────────
+function PartsApprovalTab() {
+  const [data, setData]       = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError]     = useState(null);
+  const [acting, setActing]   = useState({});
+  const [toasts, setToasts]   = useState([]);
+
+  const addToast = (msg, ok = true) => {
+    const id = Date.now();
+    setToasts(t => [...t, { id, msg, ok }]);
+    setTimeout(() => setToasts(t => t.filter(x => x.id !== id)), 4000);
+  };
+
+  const load = useCallback(async () => {
+    setLoading(true); setError(null);
+    try { setData(await fetchPendingApprovals()); }
+    catch (e) { setError(e.message); }
+    finally { setLoading(false); }
+  }, []);
+
+  useEffect(() => { load(); }, [load]);
+
+  async function handleDecision(ticketId, approved) {
+    setActing(a => ({ ...a, [ticketId]: approved ? "approving" : "rejecting" }));
+    try {
+      await approveOrRejectParts(ticketId, approved);
+      addToast(
+        approved
+          ? `✅ Parts approved — invoice email sent to customer.`
+          : `❌ Parts rejected — customer notified by email.`,
+        approved
+      );
+      await load();
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setActing(a => { const n = { ...a }; delete n[ticketId]; return n; });
+    }
+  }
+
+  if (loading) return (
+    <div className="card animate-in" style={{ textAlign: "center", padding: "60px 20px" }}>
+      <div style={{ width: 40, height: 40, border: "3px solid var(--border)", borderTopColor: "var(--brand)", borderRadius: "50%", animation: "spin 0.8s linear infinite", margin: "0 auto 16px" }} />
+      <p style={{ color: "var(--text-muted)", fontSize: 14 }}>Loading pending approvals...</p>
+      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+    </div>
+  );
+  
+  if (error) return (
+    <div className="card animate-in" style={{ background: "var(--accent-light)", border: "1px solid rgba(224,92,42,0.2)", padding: "20px" }}>
+      <div style={{ fontWeight: 700, color: "var(--accent)", marginBottom: 8 }}>Something went wrong</div>
+      <p style={{ fontSize: 13, color: "var(--text-secondary)", marginBottom: 16 }}>{error}</p>
+      <button className="btn btn-outline" onClick={load}>Retry</button>
+    </div>
+  );
+  
+  if (!data) return null;
+
+  const { approvals } = data;
+
+  function ApprovalCard({ a }) {
+    const isActing   = !!acting[a.ticketId];
+    const warrantyOk = a.warrantyStatus === "UNDER_WARRANTY";
+    const costHigh   = a.totalCost > 500;
+
+    return (
+      <div className="card mb-16 animate-in" style={{ borderLeft: `4px solid ${!warrantyOk || costHigh ? "var(--accent)" : "var(--brand)"}` }}>
+        {/* Header */}
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 16 }}>
+          <div>
+            <div className="mono" style={{ fontSize: 12, color: "var(--brand)", marginBottom: 4 }}>{a.ticketId}</div>
+            <h3 style={{ fontSize: 18, fontWeight: 700, marginBottom: 2 }}>{a.customerName}</h3>
+            <div style={{ fontSize: 13, color: "var(--text-secondary)" }}>{a.subject}</div>
+          </div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 6, alignItems: "flex-end" }}>
+            <span className="badge" style={{ color: warrantyOk ? "var(--brand)" : "var(--accent)", background: warrantyOk ? "var(--brand-light)" : "var(--accent-light)" }}>
+              {warrantyOk ? "Under Warranty" : "Warranty Expired"}
+            </span>
+            <span className="badge" style={{ color: costHigh ? "var(--accent)" : "var(--brand)", background: costHigh ? "var(--accent-light)" : "var(--brand-light)", fontSize: 13, fontWeight: 800 }}>
+              RM {a.totalCost.toFixed(2)}
+            </span>
+          </div>
+        </div>
+
+        {/* Fault */}
+        {a.faultType && (
+          <div style={{ padding: "10px 14px", background: "var(--bg-subtle)", borderRadius: 8, marginBottom: 16, fontSize: 13 }}>
+            <span style={{ color: "var(--text-muted)", marginRight: 8 }}>Fault Diagnosed:</span>
+            <strong>{a.faultType}</strong>
+          </div>
+        )}
+
+        {/* Parts table */}
+        <div style={{ border: "1px solid var(--border)", borderRadius: "10px", overflow: "hidden", marginBottom: 16 }}>
+          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+            <thead>
+              <tr style={{ background: "var(--bg-subtle)" }}>
+                <th style={{ padding: "10px 14px", textAlign: "left",  fontWeight: 700, fontSize: 11, color: "var(--text-secondary)" }}>PART</th>
+                <th style={{ padding: "10px 14px", textAlign: "left",  fontWeight: 700, fontSize: 11, color: "var(--text-secondary)" }}>STOCK</th>
+                <th style={{ padding: "10px 14px", textAlign: "right", fontWeight: 700, fontSize: 11, color: "var(--text-secondary)" }}>COST</th>
+              </tr>
+            </thead>
+            <tbody>
+              {a.predictedParts.map((p, i) => {
+                const stock = STOCK_CFG[p.stock] || STOCK_CFG.UNKNOWN;
+                return (
+                  <tr key={i} style={{ borderTop: "1px solid var(--border)" }}>
+                    <td style={{ padding: "10px 14px" }}><div style={{ fontWeight: 600 }}>{p.name}</div><div className="mono" style={{ fontSize: 11, color: "var(--text-muted)" }}>{p.partId}</div></td>
+                    <td style={{ padding: "10px 14px" }}><span className="badge" style={{ color: stock.color, background: stock.bg, fontSize: 10 }}>{stock.label}</span></td>
+                    <td style={{ padding: "10px 14px", textAlign: "right", fontWeight: 600 }}>RM {Number(p.cost || 0).toFixed(2)}</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+
+        {/* Reason banner */}
+        <div style={{ padding: "10px 14px", borderRadius: 8, marginBottom: 16, fontSize: 12,
+          background: warrantyOk && !costHigh ? "var(--brand-light)"  : "var(--accent-light)",
+          color:      warrantyOk && !costHigh ? "var(--brand)"        : "var(--accent)" }}>
+          {!warrantyOk                    && "⚠️ Warranty expired — repair cost not covered."}
+          {warrantyOk && costHigh         && `⚠️ Cost RM ${a.totalCost.toFixed(2)} exceeds RM 500 auto-approval limit.`}
+          {warrantyOk && !costHigh        && "✅ Under warranty and within cost limit — safe to approve."}
+        </div>
+
+        {/* Email note */}
+        <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, color: "var(--text-muted)", marginBottom: 16 }}>
+          <Icon.mail />
+          An invoice email will be sent to the customer automatically on approval or rejection.
+        </div>
+
+        {/* Action buttons */}
+        <div style={{ display: "flex", gap: 12 }}>
+          <button className="btn btn-primary" style={{ flex: 1 }} disabled={isActing} onClick={() => handleDecision(a.ticketId, true)}>
+            {acting[a.ticketId] === "approving" ? "Approving..." : "✓ Approve Parts"}
+          </button>
+          <button className="btn btn-outline" style={{ flex: 1, color: "var(--accent)", borderColor: "var(--accent)" }} disabled={isActing} onClick={() => handleDecision(a.ticketId, false)}>
+            {acting[a.ticketId] === "rejecting" ? "Rejecting..." : "✗ Reject & Cancel"}
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="animate-in">
+      {/* Toast notifications */}
+      <div style={{ position: "fixed", top: 80, right: 24, zIndex: 999, display: "flex", flexDirection: "column", gap: 8 }}>
+        {toasts.map(t => (
+          <div key={t.id} style={{ padding: "12px 20px", borderRadius: 10, background: t.ok ? "var(--brand)" : "var(--accent)", color: "#fff", fontSize: 13, fontWeight: 600, boxShadow: "0 4px 16px rgba(0,0,0,0.15)", animation: "fadeIn 0.2s ease" }}>
+            {t.msg}
+          </div>
+        ))}
+      </div>
+
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 16 }}>
+        <div>
+          <h1 className="display-font" style={{ fontSize: 32, marginBottom: 4 }}>Parts Approval</h1>
+          <p style={{ color: "var(--text-secondary)" }}>Review and authorize spare part requests — customers are notified by email automatically.</p>
+        </div>
+        <button className="btn btn-outline" style={{ display: "flex", alignItems: "center", gap: 6 }} onClick={load}>
+          <Icon.refresh /> Refresh
+        </button>
+      </div>
+
+      <div className="stats-grid" style={{ marginBottom: 24 }}>
+        <div className="card">
+          <div className="stat-label">Pending Approvals</div>
+          <div className="stat-value" style={{ color: approvals.length > 0 ? "var(--accent)" : "inherit" }}>{approvals.length}</div>
+        </div>
+        <div className="card">
+          <div className="stat-label">Total Parts Cost</div>
+          <div className="stat-value">RM {approvals.reduce((s, a) => s + a.totalCost, 0).toFixed(2)}</div>
+        </div>
+      </div>
+
+      <Divider label="Awaiting Authorization" />
+
+      {approvals.length > 0
+        ? approvals.map(a => <ApprovalCard key={a.ticketId} a={a} />)
+        : <div className="card" style={{ textAlign: "center", padding: "48px", color: "var(--text-muted)" }}>No pending approvals. All parts requests are resolved. ✅</div>}
+    </div>
+  );
+}
+
 // ── Main Component ────────────────────────────────────────────────────────────
 
 export default function AdminDashboard() {
@@ -84,14 +297,18 @@ export default function AdminDashboard() {
 
   useEffect(() => {
     async function load() {
+      if (tab === "approvals") {
+        setLoading(false);
+        return;
+      }
       setLoading(true);
       try {
-        const [fbData, partsData] = await Promise.all([
+        const [fbData, partsAnalytics] = await Promise.all([
           getAdminFeedback(),
           getPartsAnalytics()
         ]);
         setFeedbackData(fbData);
-        setPartsData(partsData);
+        setPartsData(partsAnalytics);
       } catch (e) {
         setError("Failed to load dashboard data. Check your API connection.");
       } finally {
@@ -99,7 +316,7 @@ export default function AdminDashboard() {
       }
     }
     load();
-  }, []);
+  }, [tab]);
 
   // ── Styles ──
   const styles = {
@@ -201,6 +418,12 @@ export default function AdminDashboard() {
           onClick={() => setTab("parts")}
         >
           Parts Analytics
+        </div>
+        <div
+          style={styles.navTab(tab === "approvals")}
+          onClick={() => setTab("approvals")}
+        >
+          Parts Approval
         </div>
         <div style={{
           marginLeft: 24, width: 36, height: 36,
@@ -410,6 +633,11 @@ export default function AdminDashboard() {
             </div>
           </>
         )}
+
+        {/* ════════════════════════════════════════════
+            TAB 3 — PARTS APPROVAL
+        ════════════════════════════════════════════ */}
+        {tab === "approvals" && <PartsApprovalTab />}
 
       </div>
     </div>

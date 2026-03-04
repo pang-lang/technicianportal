@@ -9,8 +9,6 @@ import {
   approveParts as apiApproveParts,
   completeJob as apiCompleteJob,
   fetchEscalations,
-  fetchPendingApprovals,
-  approveOrRejectParts,
 } from "./api";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -625,183 +623,6 @@ function EscalationPage() {
 
 
 // ══════════════════════════════════════════════════════════════════════════════
-// MANAGER APPROVAL PAGE  —  GET /portal/pending-approvals
-// ══════════════════════════════════════════════════════════════════════════════
-function ManagerApprovalPage() {
-  const [data, setData]       = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError]     = useState(null);
-  const [acting, setActing]   = useState({});   // { ticketId: "approving" | "rejecting" }
-  const [toasts, setToasts]   = useState([]);   // [{ id, msg, ok }]
-
-  const addToast = (msg, ok = true) => {
-    const id = Date.now();
-    setToasts(t => [...t, { id, msg, ok }]);
-    setTimeout(() => setToasts(t => t.filter(x => x.id !== id)), 4000);
-  };
-
-  const load = useCallback(async () => {
-    setLoading(true); setError(null);
-    try { setData(await fetchPendingApprovals()); }
-    catch (e) { setError(e.message); }
-    finally { setLoading(false); }
-  }, []);
-
-  useEffect(() => { load(); }, [load]);
-
-  async function handleDecision(ticketId, approved) {
-    setActing(a => ({ ...a, [ticketId]: approved ? "approving" : "rejecting" }));
-    try {
-      await approveOrRejectParts(ticketId, approved);
-      addToast(
-        approved
-          ? `✅ Parts approved — invoice email sent to customer.`
-          : `❌ Parts rejected — customer notified by email.`,
-        approved
-      );
-      await load();
-    } catch (e) {
-      setError(e.message);
-    } finally {
-      setActing(a => { const n = { ...a }; delete n[ticketId]; return n; });
-    }
-  }
-
-  if (loading) return <Spinner message="Loading pending approvals..." />;
-  if (error)   return <ErrorBanner message={error} onRetry={load} />;
-  if (!data)   return null;
-
-  const { approvals } = data;
-
-  function ApprovalCard({ a }) {
-    const isActing   = !!acting[a.ticketId];
-    const warrantyOk = a.warrantyStatus === "UNDER_WARRANTY";
-    const costHigh   = a.totalCost > 500;
-
-    return (
-      <div className="card mb-16 animate-in" style={{ borderLeft: `4px solid ${!warrantyOk || costHigh ? "var(--accent)" : "var(--brand)"}` }}>
-
-        {/* Header */}
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 16 }}>
-          <div>
-            <div className="mono" style={{ fontSize: 12, color: "var(--brand)", marginBottom: 4 }}>{a.ticketId}</div>
-            <h3 style={{ fontSize: 18, fontWeight: 700, marginBottom: 2 }}>{a.customerName}</h3>
-            <div style={{ fontSize: 13, color: "var(--text-secondary)" }}>{a.subject}</div>
-          </div>
-          <div style={{ display: "flex", flexDirection: "column", gap: 6, alignItems: "flex-end" }}>
-            <span className="badge" style={{ color: warrantyOk ? "var(--brand)" : "var(--accent)", background: warrantyOk ? "var(--brand-light)" : "var(--accent-light)" }}>
-              {warrantyOk ? "Under Warranty" : "Warranty Expired"}
-            </span>
-            <span className="badge" style={{ color: costHigh ? "var(--accent)" : "var(--brand)", background: costHigh ? "var(--accent-light)" : "var(--brand-light)", fontSize: 13, fontWeight: 800 }}>
-              RM {a.totalCost.toFixed(2)}
-            </span>
-          </div>
-        </div>
-
-        {/* Fault */}
-        {a.faultType && (
-          <div style={{ padding: "10px 14px", background: "var(--bg-subtle)", borderRadius: 8, marginBottom: 16, fontSize: 13 }}>
-            <span style={{ color: "var(--text-muted)", marginRight: 8 }}>Fault Diagnosed:</span>
-            <strong>{a.faultType}</strong>
-          </div>
-        )}
-
-        {/* Parts table */}
-        <div style={{ border: "1px solid var(--border)", borderRadius: "10px", overflow: "hidden", marginBottom: 16 }}>
-          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
-            <thead>
-              <tr style={{ background: "var(--bg-subtle)" }}>
-                <th style={{ padding: "10px 14px", textAlign: "left",  fontWeight: 700, fontSize: 11, color: "var(--text-secondary)" }}>PART</th>
-                <th style={{ padding: "10px 14px", textAlign: "left",  fontWeight: 700, fontSize: 11, color: "var(--text-secondary)" }}>STOCK</th>
-                <th style={{ padding: "10px 14px", textAlign: "right", fontWeight: 700, fontSize: 11, color: "var(--text-secondary)" }}>COST</th>
-              </tr>
-            </thead>
-            <tbody>
-              {a.predictedParts.map((p, i) => {
-                const stock = STOCK_CFG[p.stock] || STOCK_CFG.UNKNOWN;
-                return (
-                  <tr key={i} style={{ borderTop: "1px solid var(--border)" }}>
-                    <td style={{ padding: "10px 14px" }}><div style={{ fontWeight: 600 }}>{p.name}</div><div className="mono" style={{ fontSize: 11, color: "var(--text-muted)" }}>{p.partId}</div></td>
-                    <td style={{ padding: "10px 14px" }}><span className="badge" style={{ color: stock.color, background: stock.bg, fontSize: 10 }}>{stock.label}</span></td>
-                    <td style={{ padding: "10px 14px", textAlign: "right", fontWeight: 600 }}>RM {Number(p.cost || 0).toFixed(2)}</td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
-
-        {/* Reason banner */}
-        <div style={{ padding: "10px 14px", borderRadius: 8, marginBottom: 16, fontSize: 12,
-          background: warrantyOk && !costHigh ? "var(--brand-light)"  : "var(--accent-light)",
-          color:      warrantyOk && !costHigh ? "var(--brand)"        : "var(--accent)" }}>
-          {!warrantyOk                    && "⚠️ Warranty expired — repair cost not covered."}
-          {warrantyOk && costHigh         && `⚠️ Cost RM ${a.totalCost.toFixed(2)} exceeds RM 500 auto-approval limit.`}
-          {warrantyOk && !costHigh        && "✅ Under warranty and within cost limit — safe to approve."}
-        </div>
-
-        {/* Email note */}
-        <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, color: "var(--text-muted)", marginBottom: 16 }}>
-          <Icon.mail style={{ width: 14 }} />
-          An invoice email will be sent to the customer automatically on approval or rejection.
-        </div>
-
-        {/* Action buttons */}
-        <div style={{ display: "flex", gap: 12 }}>
-          <button className="btn btn-primary" style={{ flex: 1 }} disabled={isActing} onClick={() => handleDecision(a.ticketId, true)}>
-            {acting[a.ticketId] === "approving" ? "Approving..." : "✓ Approve Parts"}
-          </button>
-          <button className="btn btn-outline" style={{ flex: 1, color: "var(--accent)", borderColor: "var(--accent)" }} disabled={isActing} onClick={() => handleDecision(a.ticketId, false)}>
-            {acting[a.ticketId] === "rejecting" ? "Rejecting..." : "✗ Reject & Cancel"}
-          </button>
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <div className="animate-in">
-      {/* Toast notifications */}
-      <div style={{ position: "fixed", top: 80, right: 24, zIndex: 999, display: "flex", flexDirection: "column", gap: 8 }}>
-        {toasts.map(t => (
-          <div key={t.id} style={{ padding: "12px 20px", borderRadius: 10, background: t.ok ? "var(--brand)" : "var(--accent)", color: "#fff", fontSize: 13, fontWeight: 600, boxShadow: "0 4px 16px rgba(0,0,0,0.15)", animation: "fadeIn 0.2s ease" }}>
-            {t.msg}
-          </div>
-        ))}
-      </div>
-
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 16 }}>
-        <div>
-          <h1 className="display-font" style={{ fontSize: 32, marginBottom: 4 }}>Parts Approval</h1>
-          <p style={{ color: "var(--text-secondary)" }}>Review and authorize spare part requests — customers are notified by email automatically.</p>
-        </div>
-        <button className="btn btn-outline" style={{ display: "flex", alignItems: "center", gap: 6 }} onClick={load}>
-          <Icon.refresh style={{ width: 14 }} /> Refresh
-        </button>
-      </div>
-
-      <div className="stats-grid" style={{ marginBottom: 24 }}>
-        <div className="card">
-          <div className="stat-label">Pending Approvals</div>
-          <div className="stat-value" style={{ color: approvals.length > 0 ? "var(--accent)" : "inherit" }}>{approvals.length}</div>
-        </div>
-        <div className="card">
-          <div className="stat-label">Total Parts Cost</div>
-          <div className="stat-value">RM {approvals.reduce((s, a) => s + a.totalCost, 0).toFixed(2)}</div>
-        </div>
-      </div>
-
-      <Divider label="Awaiting Authorization" />
-
-      {approvals.length > 0
-        ? approvals.map(a => <ApprovalCard key={a.ticketId} a={a} />)
-        : <div className="card" style={{ textAlign: "center", padding: "48px", color: "var(--text-muted)" }}>No pending approvals. All parts requests are resolved. ✅</div>}
-    </div>
-  );
-}
-
-
-// ══════════════════════════════════════════════════════════════════════════════
 // ROOT APP
 // ══════════════════════════════════════════════════════════════════════════════
 export default function App() {
@@ -814,11 +635,10 @@ export default function App() {
   const [jobs, setJobs]                 = useState([]);
   const [stats, setStats]               = useState({ total: 0, active: 0, breached: 0, completed: 0 });
   const [selectedJobId, setSelectedJobId] = useState(null);
-  const [view, setView] = useState("jobs"); // jobs | alerts | approvals | ratings | admin
+  const [view, setView] = useState("jobs"); // jobs | alerts | ratings
   const [loading, setLoading]           = useState(false);
   const [error, setError]               = useState(null);
   const [alertBadge, setAlertBadge]     = useState(0);
-  const [approvalBadge, setApprovalBadge] = useState(0);
 
   const loadJobs = useCallback(async () => {
     setLoading(true); setError(null);
@@ -832,9 +652,8 @@ export default function App() {
 
   const loadBadges = useCallback(async () => {
     try {
-      const [esc, approvals] = await Promise.all([fetchEscalations(), fetchPendingApprovals()]);
+      const esc = await fetchEscalations();
       setAlertBadge(esc.breachCount + esc.reminderCount);
-      setApprovalBadge(approvals.count);
     } catch (_) { /* silent */ }
   }, []);
 
@@ -876,7 +695,6 @@ export default function App() {
           <nav style={{ display: "flex", gap: 32, marginLeft: 48, flex: 1 }}>
             <NavBtn id="jobs"      label="My Jobs"   badge={0} />
             <NavBtn id="alerts"    label="Alerts"    badge={alertBadge} />
-            <NavBtn id="approvals" label="Approvals" badge={approvalBadge} />
             <NavBtn id="ratings"   label="My Ratings" badge={0} />
           </nav>
 
@@ -896,10 +714,8 @@ export default function App() {
           <JobDetailPage jobId={selectedJobId} onBack={() => setSelectedJobId(null)} onJobMutated={loadJobs} />
         ) : view === "alerts" ? (
           <EscalationPage />
-        ) : view === "approvals" ? (
-          <ManagerApprovalPage />
         ) : view === "ratings" ? (
-          <MyRatings techId="TECH-001" />   
+          <MyRatings techId="TECH-001" />
         ) : (
           <MyJobsPage jobs={jobs} stats={stats} loading={loading} error={error}
             onSelectJob={j => setSelectedJobId(j.id)} onRetry={loadJobs} />
