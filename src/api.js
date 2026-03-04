@@ -244,3 +244,24 @@ export async function approveOrRejectParts(ticketId, approved) {
         method: "PATCH",
     });
 }
+
+// Admin — all feedback + technician ratings
+export async function getAdminFeedback() {
+  const res = await fetch(`${API_BASE}/admin/feedback`);
+  if (!res.ok) throw new Error("Failed to fetch feedback");
+  return res.json();
+}
+
+// Admin — parts analytics chart data
+export async function getPartsAnalytics() {
+  const res = await fetch(`${API_BASE}/admin/parts-analytics`);
+  if (!res.ok) throw new Error("Failed to fetch parts analytics");
+  return res.json();
+}
+
+// Technician — their own ratings only
+export async function getTechFeedback(techId) {
+  const res = await fetch(`${API_BASE}/portal/technician/${techId}/feedback`);
+  if (!res.ok) throw new Error("Failed to fetch technician feedback");
+  return res.json();
+}

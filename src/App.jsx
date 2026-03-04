@@ -1,4 +1,6 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback } from "react"; 
+import AdminDashboard from "./AdminDashboard";   
+import MyRatings from "./MyRatings";                  
 import {
   fetchJobs,
   fetchJobDetail,
@@ -803,11 +805,16 @@ function ManagerApprovalPage() {
 // ROOT APP
 // ══════════════════════════════════════════════════════════════════════════════
 export default function App() {
+
+  if (window.location.pathname === "/admin") {
+    return <AdminDashboard />;
+  }
+
   const [isLoggedIn, setIsLoggedIn]     = useState(false);
   const [jobs, setJobs]                 = useState([]);
   const [stats, setStats]               = useState({ total: 0, active: 0, breached: 0, completed: 0 });
   const [selectedJobId, setSelectedJobId] = useState(null);
-  const [view, setView]                 = useState("jobs"); // jobs | alerts | approvals
+  const [view, setView] = useState("jobs"); // jobs | alerts | approvals | ratings | admin
   const [loading, setLoading]           = useState(false);
   const [error, setError]               = useState(null);
   const [alertBadge, setAlertBadge]     = useState(0);
@@ -870,6 +877,7 @@ export default function App() {
             <NavBtn id="jobs"      label="My Jobs"   badge={0} />
             <NavBtn id="alerts"    label="Alerts"    badge={alertBadge} />
             <NavBtn id="approvals" label="Approvals" badge={approvalBadge} />
+            <NavBtn id="ratings"   label="My Ratings" badge={0} />
           </nav>
 
           <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
@@ -890,6 +898,8 @@ export default function App() {
           <EscalationPage />
         ) : view === "approvals" ? (
           <ManagerApprovalPage />
+        ) : view === "ratings" ? (
+          <MyRatings techId="TECH-001" />   
         ) : (
           <MyJobsPage jobs={jobs} stats={stats} loading={loading} error={error}
             onSelectJob={j => setSelectedJobId(j.id)} onRetry={loadJobs} />
