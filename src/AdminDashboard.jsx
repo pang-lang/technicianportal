@@ -463,19 +463,14 @@ export default function AdminDashboard() {
       {/* ── Header ── */}
       <header style={styles.header}>
         <div style={styles.nav}>
-          <div style={styles.navLogo} onClick={() => setTab("feedback")}>
-            <div style={styles.navLogoIcon}><Icon.tool /></div>
-            <div style={styles.navLogoText}>
-              Air<span style={{ color: "var(--brand)" }}>Home</span>{" "}
-              <span style={{ fontWeight: 400, opacity: 0.6, fontSize: 14, marginLeft: 8 }}>Ops</span>
-            </div>
-
+          <div style={styles.navLogo} onClick={() => setTab("approvals")}>
+            <img src="/fiamma_logo.png" alt="Fiamma" style={{ height: 36 }} />
           </div>
 
           <nav style={{ display: "flex", gap: 32, marginLeft: 48, flex: 1 }}>
             <NavBtn id="approvals" label="Parts Approval" active={tab === "approvals"} />
-            <NavBtn id="feedback" label="Customer Feedback" active={tab === "feedback"} />
             <NavBtn id="parts" label="Parts Analytics" active={tab === "parts"} />
+            <NavBtn id="feedback" label="Customer Feedback" active={tab === "feedback"} />
           </nav>
 
           <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
@@ -696,10 +691,10 @@ export default function AdminDashboard() {
       </main>
 
       {/* ── Footer ── */}
-      <footer style={styles.footer}>
+      <footer style={{ marginTop: 60, textAlign: "center" }}>
+        <div style={{ height: 1, background: "var(--border)", marginBottom: 40 }} />
         <div style={{ maxWidth: 1000, margin: "0 auto", padding: "0 24px" }}>
-          <div className="display-font" style={{ fontSize: 18, fontWeight: 700, marginBottom: 8 }}>Fiamma Field Operations</div>
-          <div style={{ fontSize: 12, color: "var(--text-muted)" }}>© 2026 Fiamma Services. Internal Technician Use Only.</div>
+          <img src="/footer_fiamma.png" alt="Fiamma Field Operations" style={{ maxWidth: "100%", height: "auto" }} />
         </div>
       </footer>
     </div>

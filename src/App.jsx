@@ -15,8 +15,10 @@ import {
 function timeAgo(iso) {
   if (!iso) return "";
   const diff = Date.now() - new Date(iso).getTime();
-  const h = Math.floor(diff / 3600000);
+  const days = Math.floor(diff / 86400000);
+  const h = Math.floor((diff % 86400000) / 3600000);
   const m = Math.floor((diff % 3600000) / 60000);
+  if (days > 0) return `${days}d ${h}h ago`;
   if (h > 0) return `${h}h ${m}m ago`;
   return `${m}m ago`;
 }
@@ -688,8 +690,7 @@ export default function App() {
       <header style={{ position: "sticky", top: 0, zIndex: 100, background: "rgba(255,255,255,0.9)", backdropFilter: "blur(12px)", borderBottom: "1px solid var(--border)" }}>
         <div className="container nav">
           <div className="nav-logo" onClick={() => { setSelectedJobId(null); setView("jobs"); }} style={{ cursor: "pointer" }}>
-            <div className="nav-logo-icon"><Icon.tool /></div>
-            <div className="nav-logo-text">Air<span>Home</span> <span style={{ fontWeight: 400, opacity: 0.6, fontSize: 14, marginLeft: 8 }}>Ops</span></div>
+            <img src="/fiamma_logo.png" alt="Fiamma" style={{ height: 36 }} />
           </div>
 
           <nav style={{ display: "flex", gap: 32, marginLeft: 48, flex: 1 }}>
@@ -722,10 +723,10 @@ export default function App() {
         )}
       </main>
 
-      <footer style={{ marginTop: 60, padding: "40px 0", borderTop: "1px solid var(--border)", textAlign: "center" }}>
+      <footer style={{ marginTop: 60, textAlign: "center" }}>
+        <div style={{ height: 1, background: "var(--border)", marginBottom: 40 }} />
         <div className="container">
-          <div className="display-font" style={{ fontSize: 18, fontWeight: 700, marginBottom: 8 }}>Fiamma Field Operations</div>
-          <div style={{ fontSize: 12, color: "var(--text-muted)" }}>© 2026 Fiamma Services. Internal Technician Use Only.</div>
+          <img src="/footer_fiamma.png" alt="Fiamma Field Operations" style={{ maxWidth: "100%", height: "auto" }} />
         </div>
       </footer>
     </div>
