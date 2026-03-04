@@ -3,9 +3,9 @@ import { getTechFeedback } from "./api";
 
 function StarRating({ rating }) {
   return (
-    <span style={{ color: "#f59e0b", fontSize: "1rem" }}>
+    <span style={{ color: "var(--accent)", fontSize: "1rem" }}>
       {"★".repeat(Math.round(rating))}{"☆".repeat(5 - Math.round(rating))}
-      <span style={{ color: "#6b7280", fontSize: "0.8rem", marginLeft: 6 }}>
+      <span style={{ color: "var(--text-muted)", fontSize: "0.8rem", marginLeft: 6 }}>
         {rating.toFixed(1)}
       </span>
     </span>
@@ -26,26 +26,30 @@ export default function MyRatings({ techId }) {
       .finally(() => setLoading(false));
   }, [techId]);
 
-  if (loading) return <div style={{ padding: 20, color: "#9ca3af" }}>Loading your ratings...</div>;
-  if (!data) return <div style={{ padding: 20, color: "#dc2626" }}>Could not load ratings.</div>;
-
-  const card = {
-    background: "#fff", border: "1px solid #e5e7eb",
-    borderRadius: 16, padding: 24,
-    boxShadow: "0 1px 4px rgba(0,0,0,0.04)", marginBottom: 16
-  };
+  if (loading) return (
+    <div className="card animate-in" style={{ textAlign: "center", padding: "60px 20px" }}>
+      <div style={{ width: 40, height: 40, border: "3px solid var(--border)", borderTopColor: "var(--brand)", borderRadius: "50%", animation: "spin 0.8s linear infinite", margin: "0 auto 16px" }} />
+      <p style={{ color: "var(--text-muted)", fontSize: 14 }}>Loading your ratings...</p>
+      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+    </div>
+  );
+  
+  if (!data) return (
+    <div className="card animate-in" style={{ background: "var(--accent-light)", border: "1px solid rgba(224,92,42,0.2)", padding: "20px" }}>
+      <div style={{ color: "var(--accent)", fontWeight: 600 }}>Could not load ratings.</div>
+    </div>
+  );
 
   return (
-    <div style={{ fontFamily: "'DM Sans', 'Segoe UI', sans-serif" }}>
-
+    <div className="animate-in">
       {/* Summary card */}
-      <div style={{ ...card, display: "flex", gap: 32, alignItems: "center", marginBottom: 24 }}>
+      <div className="card mb-16" style={{ display: "flex", gap: 32, alignItems: "center" }}>
         <div style={{ textAlign: "center" }}>
-          <div style={{ fontSize: "3rem", fontWeight: 800, color: "#111827", lineHeight: 1 }}>
+          <div className="stat-value" style={{ lineHeight: 1 }}>
             {data.average_rating}
           </div>
           <StarRating rating={data.average_rating} />
-          <div style={{ fontSize: "0.75rem", color: "#9ca3af", marginTop: 4 }}>
+          <div style={{ fontSize: "0.75rem", color: "var(--text-muted)", marginTop: 4 }}>
             {data.total_reviews} review{data.total_reviews !== 1 ? "s" : ""}
           </div>
         </div>
@@ -56,15 +60,15 @@ export default function MyRatings({ techId }) {
             const pct = data.total_reviews > 0 ? (count / data.total_reviews) * 100 : 0;
             return (
               <div key={star} style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
-                <span style={{ fontSize: "0.78rem", color: "#6b7280", width: 12 }}>{star}</span>
-                <span style={{ color: "#f59e0b", fontSize: "0.8rem" }}>★</span>
-                <div style={{ flex: 1, background: "#f3f4f6", borderRadius: 99, height: 8 }}>
+                <span style={{ fontSize: "0.78rem", color: "var(--text-secondary)", width: 12 }}>{star}</span>
+                <span style={{ color: "var(--accent)", fontSize: "0.8rem" }}>★</span>
+                <div style={{ flex: 1, background: "var(--bg-subtle)", borderRadius: 99, height: 8 }}>
                   <div style={{
-                    width: `${pct}%`, background: "#f59e0b",
+                    width: `${pct}%`, background: "var(--accent)",
                     height: "100%", borderRadius: 99, transition: "width 0.6s ease"
                   }} />
                 </div>
-                <span style={{ fontSize: "0.75rem", color: "#9ca3af", width: 20 }}>{count}</span>
+                <span style={{ fontSize: "0.75rem", color: "var(--text-muted)", width: 20 }}>{count}</span>
               </div>
             );
           })}
@@ -72,19 +76,17 @@ export default function MyRatings({ techId }) {
       </div>
 
       {/* Individual feedback */}
-      <div style={{ fontSize: "0.9rem", fontWeight: 700, color: "#374151", marginBottom: 12 }}>
-        Customer Comments
-      </div>
+      <h3 className="display-font mb-16" style={{ fontSize: 20 }}>Customer Comments</h3>
       {data.feedbacks.length === 0 && (
-        <div style={{ color: "#9ca3af", fontSize: "0.85rem", padding: "16px 0" }}>
+        <div className="card" style={{ textAlign: "center", padding: "48px", color: "var(--text-muted)" }}>
           No feedback yet. Complete more jobs to get reviews!
         </div>
       )}
       {data.feedbacks.map((f) => (
-        <div key={f.feedback_id} style={card}>
+        <div key={f.feedback_id} className="card mb-16">
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 8 }}>
             <StarRating rating={f.rating} />
-            <span style={{ fontSize: "0.75rem", color: "#9ca3af" }}>
+            <span className="mono" style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>
               {f.ticket_id} · {f.created_at ? new Date(f.created_at).toLocaleDateString("en-MY") : ""}
             </span>
           </div>
@@ -92,10 +94,8 @@ export default function MyRatings({ techId }) {
           {f.tags?.length > 0 && (
             <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 8 }}>
               {f.tags.map((tag, i) => (
-                <span key={i} style={{
-                  background: "#dbeafe", color: "#1d4ed8",
-                  fontSize: "0.72rem", fontWeight: 600,
-                  padding: "2px 8px", borderRadius: 99
+                <span key={i} className="badge" style={{
+                  background: "var(--brand-light)", color: "var(--brand)"
                 }}>
                   {tag}
                 </span>
@@ -103,7 +103,7 @@ export default function MyRatings({ techId }) {
             </div>
           )}
           {f.comment && (
-            <div style={{ fontSize: "0.85rem", color: "#374151", fontStyle: "italic" }}>
+            <div style={{ fontSize: "0.85rem", color: "var(--text-secondary)", fontStyle: "italic" }}>
               "{f.comment}"
             </div>
           )}

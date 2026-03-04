@@ -5,9 +5,9 @@ import { getAdminFeedback, getPartsAnalytics } from "./api";
 
 function StarRating({ rating }) {
   return (
-    <span style={{ color: "#f59e0b", fontSize: "1rem", letterSpacing: "1px" }}>
+    <span style={{ color: "var(--accent)", fontSize: "1rem", letterSpacing: "1px" }}>
       {"★".repeat(Math.round(rating))}{"☆".repeat(5 - Math.round(rating))}
-      <span style={{ color: "#6b7280", fontSize: "0.8rem", marginLeft: 6 }}>
+      <span style={{ color: "var(--text-muted)", fontSize: "0.8rem", marginLeft: 6 }}>
         {rating.toFixed(1)}
       </span>
     </span>
@@ -16,19 +16,15 @@ function StarRating({ rating }) {
 
 function Badge({ label, color }) {
   const colors = {
-    green:  { bg: "#dcfce7", text: "#16a34a" },
-    red:    { bg: "#fee2e2", text: "#dc2626" },
-    orange: { bg: "#ffedd5", text: "#ea580c" },
-    blue:   { bg: "#dbeafe", text: "#2563eb" },
-    gray:   { bg: "#f3f4f6", text: "#6b7280" },
+    green:  { bg: "var(--brand-light)", text: "var(--brand)" },
+    red:    { bg: "var(--accent-light)", text: "var(--accent)" },
+    orange: { bg: "#fdf0eb", text: "#e05c2a" },
+    blue:   { bg: "var(--brand-light)", text: "var(--brand)" },
+    gray:   { bg: "var(--bg-subtle)", text: "var(--text-muted)" },
   };
   const c = colors[color] || colors.gray;
   return (
-    <span style={{
-      background: c.bg, color: c.text,
-      padding: "2px 10px", borderRadius: 99,
-      fontSize: "0.72rem", fontWeight: 700, letterSpacing: "0.05em"
-    }}>
+    <span className="badge" style={{ background: c.bg, color: c.text }}>
       {label}
     </span>
   );
@@ -36,38 +32,34 @@ function Badge({ label, color }) {
 
 function StatCard({ label, value, sub, accent }) {
   return (
-    <div style={{
-      background: "#fff", border: "1px solid #e5e7eb",
-      borderRadius: 16, padding: "24px 28px", flex: 1, minWidth: 160,
-      boxShadow: "0 1px 4px rgba(0,0,0,0.04)"
-    }}>
-      <div style={{ fontSize: "0.75rem", color: "#9ca3af", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 6 }}>
+    <div className="card" style={{ flex: 1, minWidth: 160 }}>
+      <div className="stat-label" style={{ marginTop: 0, marginBottom: 6 }}>
         {label}
       </div>
-      <div style={{ fontSize: "2rem", fontWeight: 800, color: accent || "#111827" }}>
+      <div className="stat-value" style={{ color: accent || "var(--text-primary)" }}>
         {value}
       </div>
-      {sub && <div style={{ fontSize: "0.78rem", color: "#6b7280", marginTop: 4 }}>{sub}</div>}
+      {sub && <div style={{ fontSize: "0.78rem", color: "var(--text-muted)", marginTop: 4 }}>{sub}</div>}
     </div>
   );
 }
 
 // Simple bar chart — no library needed
 function BarChart({ data }) {
-  if (!data || data.length === 0) return <div style={{ color: "#9ca3af", padding: 20 }}>No data yet</div>;
+  if (!data || data.length === 0) return <div style={{ color: "var(--text-muted)", padding: 20 }}>No data yet</div>;
   const max = Math.max(...data.map(d => d.count));
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
       {data.slice(0, 8).map((item, i) => (
         <div key={i} style={{ display: "flex", alignItems: "center", gap: 12 }}>
-          <div style={{ width: 140, fontSize: "0.8rem", color: "#374151", textAlign: "right", flexShrink: 0 }}>
+          <div style={{ width: 140, fontSize: "0.8rem", color: "var(--text-secondary)", textAlign: "right", flexShrink: 0 }}>
             {item.part_name}
           </div>
-          <div style={{ flex: 1, background: "#f3f4f6", borderRadius: 99, height: 22, overflow: "hidden" }}>
+          <div style={{ flex: 1, background: "var(--bg-subtle)", borderRadius: 99, height: 22, overflow: "hidden" }}>
             <div style={{
               width: `${(item.count / max) * 100}%`,
-              background: "linear-gradient(90deg, #1d4ed8, #3b82f6)",
+              background: "var(--brand)",
               height: "100%", borderRadius: 99,
               transition: "width 0.8s ease",
               display: "flex", alignItems: "center", paddingLeft: 10
@@ -113,77 +105,73 @@ export default function AdminDashboard() {
   const styles = {
     page: {
       minHeight: "100vh",
-      background: "#f9fafb",
-      fontFamily: "'DM Sans', 'Segoe UI', sans-serif",
+      background: "var(--bg)",
+      fontFamily: "'Plus Jakarta Sans', sans-serif",
     },
     nav: {
-      background: "#fff",
-      borderBottom: "1px solid #e5e7eb",
+      background: "rgba(255,255,255,0.9)",
+      backdropFilter: "blur(12px)",
+      borderBottom: "1px solid var(--border)",
       padding: "0 40px",
       display: "flex", alignItems: "center", gap: 32,
       height: 64,
     },
     logo: {
       display: "flex", alignItems: "center", gap: 10,
-      fontWeight: 800, fontSize: "1.1rem", color: "#111827"
+      fontWeight: 800, fontSize: "1.1rem", color: "var(--text-primary)"
     },
     logoIcon: {
-      width: 34, height: 34, background: "#1d4ed8",
+      width: 34, height: 34, background: "var(--brand)",
       borderRadius: 10, display: "flex", alignItems: "center",
       justifyContent: "center", color: "#fff", fontSize: "1rem"
     },
     adminBadge: {
-      background: "#fef3c7", color: "#92400e",
+      background: "var(--accent-light)", color: "var(--accent)",
       fontSize: "0.7rem", fontWeight: 700,
       padding: "2px 8px", borderRadius: 99
     },
     navTab: (active) => ({
       padding: "20px 4px",
-      borderBottom: active ? "2px solid #1d4ed8" : "2px solid transparent",
-      color: active ? "#1d4ed8" : "#6b7280",
+      borderBottom: active ? "2px solid var(--brand)" : "2px solid transparent",
+      color: active ? "var(--brand)" : "var(--text-secondary)",
       fontWeight: active ? 700 : 500,
       fontSize: "0.9rem", cursor: "pointer",
       transition: "all 0.2s"
     }),
     body: { padding: "32px 40px", maxWidth: 1200, margin: "0 auto" },
-    heading: { fontSize: "1.6rem", fontWeight: 800, color: "#111827", marginBottom: 4 },
-    subheading: { fontSize: "0.9rem", color: "#6b7280", marginBottom: 28 },
+    heading: { fontSize: "1.6rem", fontWeight: 800, color: "var(--text-primary)", marginBottom: 4, fontFamily: "'Fraunces', serif" },
+    subheading: { fontSize: "0.9rem", color: "var(--text-secondary)", marginBottom: 28 },
     statsRow: { display: "flex", gap: 16, marginBottom: 32, flexWrap: "wrap" },
-    card: {
-      background: "#fff", border: "1px solid #e5e7eb",
-      borderRadius: 16, padding: 28,
-      boxShadow: "0 1px 4px rgba(0,0,0,0.04)", marginBottom: 24
-    },
-    cardTitle: { fontSize: "1rem", fontWeight: 700, color: "#111827", marginBottom: 20 },
+    cardTitle: { fontSize: "1rem", fontWeight: 700, color: "var(--text-primary)", marginBottom: 20 },
     table: { width: "100%", borderCollapse: "collapse" },
     th: {
       textAlign: "left", fontSize: "0.72rem", fontWeight: 700,
-      color: "#9ca3af", textTransform: "uppercase", letterSpacing: "0.08em",
-      padding: "8px 12px", borderBottom: "1px solid #f3f4f6"
+      color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.08em",
+      padding: "8px 12px", borderBottom: "1px solid var(--border)"
     },
     td: {
-      padding: "14px 12px", fontSize: "0.85rem", color: "#374151",
-      borderBottom: "1px solid #f9fafb", verticalAlign: "top"
+      padding: "14px 12px", fontSize: "0.85rem", color: "var(--text-secondary)",
+      borderBottom: "1px solid var(--bg-subtle)", verticalAlign: "top"
     },
   };
 
   if (loading) return (
     <div style={{ ...styles.page, display: "flex", alignItems: "center", justifyContent: "center" }}>
-      <div style={{ textAlign: "center", color: "#6b7280" }}>
-        <div style={{ fontSize: "2rem", marginBottom: 12 }}>⏳</div>
-        Loading dashboard...
+      <div className="card animate-in" style={{ textAlign: "center", padding: "60px 40px" }}>
+        <div style={{ width: 40, height: 40, border: "3px solid var(--border)", borderTopColor: "var(--brand)", borderRadius: "50%", animation: "spin 0.8s linear infinite", margin: "0 auto 16px" }} />
+        <p style={{ color: "var(--text-muted)", fontSize: 14 }}>Loading dashboard...</p>
+        <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
       </div>
     </div>
   );
 
   if (error) return (
     <div style={{ ...styles.page, display: "flex", alignItems: "center", justifyContent: "center" }}>
-      <div style={{ textAlign: "center", color: "#dc2626", maxWidth: 400 }}>
-        <div style={{ fontSize: "2rem", marginBottom: 12 }}>⚠️</div>
-        <div style={{ fontWeight: 700, marginBottom: 8 }}>Connection Error</div>
-        <div style={{ fontSize: "0.85rem", color: "#6b7280" }}>{error}</div>
-        <div style={{ marginTop: 12, fontSize: "0.8rem", color: "#9ca3af" }}>
-          Make sure <code>API_BASE</code> is set to your deployed API URL
+      <div className="card animate-in" style={{ background: "var(--accent-light)", border: "1px solid rgba(224,92,42,0.2)", padding: "32px", textAlign: "center", maxWidth: 400 }}>
+        <div style={{ fontWeight: 700, color: "var(--accent)", marginBottom: 12, fontSize: "1.1rem" }}>Connection Error</div>
+        <div style={{ fontSize: "0.85rem", color: "var(--text-secondary)", marginBottom: 12 }}>{error}</div>
+        <div style={{ fontSize: "0.8rem", color: "var(--text-muted)" }}>
+          Make sure <code className="mono">API_BASE</code> is set to your deployed API URL
         </div>
       </div>
     </div>
@@ -245,24 +233,24 @@ export default function AdminDashboard() {
                 label="Average Rating"
                 value={`${fb.average_rating || 0} ★`}
                 sub="Across all tickets"
-                accent="#f59e0b"
+                accent="var(--accent)"
               />
               <StatCard
                 label="Technicians Reviewed"
                 value={fb.technician_summary?.length || 0}
                 sub="With at least 1 review"
-                accent="#1d4ed8"
+                accent="var(--brand)"
               />
               <StatCard
                 label="5-Star Reviews"
                 value={fb.feedbacks?.filter(f => f.rating === 5).length || 0}
                 sub="Perfect scores"
-                accent="#16a34a"
+                accent="var(--brand)"
               />
             </div>
 
             {/* Technician Leaderboard */}
-            <div style={styles.card}>
+            <div className="card mb-16">
               <div style={styles.cardTitle}>🏆 Technician Performance</div>
               <table style={styles.table}>
                 <thead>
@@ -280,12 +268,12 @@ export default function AdminDashboard() {
                     .map((tech, i) => (
                       <tr key={tech.tech_id}>
                         <td style={styles.td}>
-                          <span style={{ fontWeight: 700, color: i === 0 ? "#f59e0b" : "#9ca3af" }}>
+                          <span style={{ fontWeight: 700, color: i === 0 ? "var(--accent)" : "var(--text-muted)" }}>
                             {i === 0 ? "🥇" : i === 1 ? "🥈" : i === 2 ? "🥉" : `#${i + 1}`}
                           </span>
                         </td>
                         <td style={styles.td}>
-                          <span style={{ fontWeight: 600, color: "#1d4ed8" }}>{tech.tech_id}</span>
+                          <span className="mono" style={{ fontWeight: 600, color: "var(--brand)" }}>{tech.tech_id}</span>
                         </td>
                         <td style={styles.td}><StarRating rating={tech.average_rating} /></td>
                         <td style={styles.td}>{tech.feedback_count} reviews</td>
@@ -299,7 +287,7 @@ export default function AdminDashboard() {
                     ))}
                   {(!fb.technician_summary || fb.technician_summary.length === 0) && (
                     <tr>
-                      <td colSpan={5} style={{ ...styles.td, textAlign: "center", color: "#9ca3af" }}>
+                      <td colSpan={5} style={{ ...styles.td, textAlign: "center", color: "var(--text-muted)" }}>
                         No technician data yet
                       </td>
                     </tr>
@@ -309,7 +297,7 @@ export default function AdminDashboard() {
             </div>
 
             {/* All Feedback Comments */}
-            <div style={styles.card}>
+            <div className="card mb-16">
               <div style={styles.cardTitle}>💬 All Customer Comments</div>
               <table style={styles.table}>
                 <thead>
@@ -325,7 +313,7 @@ export default function AdminDashboard() {
                   {(fb.feedbacks || []).map((f) => (
                     <tr key={f.feedback_id}>
                       <td style={styles.td}>
-                        <span style={{ fontWeight: 600, color: "#1d4ed8", fontSize: "0.8rem" }}>
+                        <span className="mono" style={{ fontWeight: 600, color: "var(--brand)", fontSize: "0.8rem" }}>
                           {f.ticket_id}
                         </span>
                       </td>
@@ -337,10 +325,10 @@ export default function AdminDashboard() {
                           ))}
                         </div>
                       </td>
-                      <td style={{ ...styles.td, maxWidth: 300, color: "#374151", fontSize: "0.82rem" }}>
-                        {f.comment || <span style={{ color: "#d1d5db" }}>No comment</span>}
+                      <td style={{ ...styles.td, maxWidth: 300, color: "var(--text-secondary)", fontSize: "0.82rem" }}>
+                        {f.comment || <span style={{ color: "var(--border)" }}>No comment</span>}
                       </td>
-                      <td style={{ ...styles.td, color: "#9ca3af", fontSize: "0.78rem", whiteSpace: "nowrap" }}>
+                      <td style={{ ...styles.td, color: "var(--text-muted)", fontSize: "0.78rem", whiteSpace: "nowrap" }}>
                         {f.created_at ? new Date(f.created_at).toLocaleDateString("en-MY", {
                           day: "numeric", month: "short", year: "numeric"
                         }) : "—"}
@@ -349,7 +337,7 @@ export default function AdminDashboard() {
                   ))}
                   {(!fb.feedbacks || fb.feedbacks.length === 0) && (
                     <tr>
-                      <td colSpan={5} style={{ ...styles.td, textAlign: "center", color: "#9ca3af" }}>
+                      <td colSpan={5} style={{ ...styles.td, textAlign: "center", color: "var(--text-muted)" }}>
                         No feedback submitted yet
                       </td>
                     </tr>
@@ -371,19 +359,19 @@ export default function AdminDashboard() {
             {/* Stats */}
             <div style={styles.statsRow}>
               <StatCard label="Total Requests" value={parts.total_requests || 0} sub="All time" />
-              <StatCard label="Approved" value={parts.approved_count || 0} sub="Parts approved" accent="#16a34a" />
-              <StatCard label="Pending" value={parts.pending_count || 0} sub="Awaiting approval" accent="#f59e0b" />
-              <StatCard label="Rejected" value={parts.rejected_count || 0} sub="Rejected requests" accent="#dc2626" />
+              <StatCard label="Approved" value={parts.approved_count || 0} sub="Parts approved" accent="var(--brand)" />
+              <StatCard label="Pending" value={parts.pending_count || 0} sub="Awaiting approval" accent="var(--accent)" />
+              <StatCard label="Rejected" value={parts.rejected_count || 0} sub="Rejected requests" accent="var(--accent)" />
             </div>
 
             {/* Bar Chart */}
-            <div style={styles.card}>
+            <div className="card mb-16">
               <div style={styles.cardTitle}>📊 Most Requested Parts (Top 8)</div>
               <BarChart data={parts.parts_ranking || []} />
             </div>
 
             {/* Full Table */}
-            <div style={styles.card}>
+            <div className="card mb-16">
               <div style={styles.cardTitle}>📋 Full Parts Ranking</div>
               <table style={styles.table}>
                 <thead>
@@ -398,7 +386,7 @@ export default function AdminDashboard() {
                   {(parts.parts_ranking || []).map((item, i) => (
                     <tr key={i}>
                       <td style={styles.td}>
-                        <span style={{ fontWeight: 700, color: "#9ca3af" }}>#{i + 1}</span>
+                        <span style={{ fontWeight: 700, color: "var(--text-muted)" }}>#{i + 1}</span>
                       </td>
                       <td style={{ ...styles.td, fontWeight: 600 }}>{item.part_name}</td>
                       <td style={styles.td}>{item.count}×</td>
@@ -412,7 +400,7 @@ export default function AdminDashboard() {
                   ))}
                   {(!parts.parts_ranking || parts.parts_ranking.length === 0) && (
                     <tr>
-                      <td colSpan={4} style={{ ...styles.td, textAlign: "center", color: "#9ca3af" }}>
+                      <td colSpan={4} style={{ ...styles.td, textAlign: "center", color: "var(--text-muted)" }}>
                         No parts requests yet
                       </td>
                     </tr>
