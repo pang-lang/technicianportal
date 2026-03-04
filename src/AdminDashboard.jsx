@@ -75,6 +75,7 @@ function BarChart({ data }) {
 
 // ── Icons ────────────────────────────────────────────────────────────────────
 const Icon = {
+  tool:    () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 20, height: 20 }}><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z" /></svg>,
   refresh: () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 14, height: 14 }}><polyline points="23 4 23 10 17 10" /><polyline points="1 20 1 14 7 14" /><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" /></svg>,
   mail:    () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 14, height: 14 }}><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" /><polyline points="22,6 12,13 2,6" /></svg>,
   check:   () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ width: 16, height: 16 }}><polyline points="20 6 9 17 4 12" /></svg>,
@@ -289,7 +290,7 @@ function PartsApprovalTab() {
 // ── Main Component ────────────────────────────────────────────────────────────
 
 export default function AdminDashboard() {
-  const [tab, setTab] = useState("feedback");
+  const [tab, setTab] = useState("approvals");
   const [feedbackData, setFeedbackData] = useState(null);
   const [partsData, setPartsData] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -324,38 +325,81 @@ export default function AdminDashboard() {
       minHeight: "100vh",
       background: "var(--bg)",
       fontFamily: "'Plus Jakarta Sans', sans-serif",
+      display: "flex",
+      flexDirection: "column",
     },
-    nav: {
+    header: {
+      position: "sticky",
+      top: 0,
+      zIndex: 100,
       background: "rgba(255,255,255,0.9)",
       backdropFilter: "blur(12px)",
       borderBottom: "1px solid var(--border)",
-      padding: "0 40px",
-      display: "flex", alignItems: "center", gap: 32,
-      height: 64,
     },
-    logo: {
-      display: "flex", alignItems: "center", gap: 10,
-      fontWeight: 800, fontSize: "1.1rem", color: "var(--text-primary)"
+    nav: {
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "space-between",
+      height: 68,
+      gap: 32,
+      maxWidth: 1000,
+      margin: "0 auto",
+      padding: "0 24px",
     },
-    logoIcon: {
-      width: 34, height: 34, background: "var(--brand)",
-      borderRadius: 10, display: "flex", alignItems: "center",
-      justifyContent: "center", color: "#fff", fontSize: "1rem"
+    navLogo: {
+      display: "flex",
+      alignItems: "center",
+      gap: 10,
+      cursor: "pointer",
+    },
+    navLogoIcon: {
+      width: 36,
+      height: 36,
+      background: "var(--brand)",
+      borderRadius: 10,
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      color: "#fff",
+      flexShrink: 0,
+    },
+    navLogoText: {
+      fontFamily: "'Fraunces', serif",
+      fontSize: 20,
+      fontWeight: 700,
+      color: "var(--text-primary)",
+      letterSpacing: "-0.02em",
     },
     adminBadge: {
-      background: "var(--accent-light)", color: "var(--accent)",
-      fontSize: "0.7rem", fontWeight: 700,
-      padding: "2px 8px", borderRadius: 99
+      background: "var(--accent-light)",
+      color: "var(--accent)",
+      fontSize: "0.7rem",
+      fontWeight: 700,
+      padding: "2px 8px",
+      borderRadius: 99,
+      marginLeft: 8,
     },
     navTab: (active) => ({
-      padding: "20px 4px",
-      borderBottom: active ? "2px solid var(--brand)" : "2px solid transparent",
+      background: "none",
+      border: "none",
+      padding: "20px 0",
+      cursor: "pointer",
+      fontSize: 14,
+      fontWeight: 700,
       color: active ? "var(--brand)" : "var(--text-secondary)",
-      fontWeight: active ? 700 : 500,
-      fontSize: "0.9rem", cursor: "pointer",
-      transition: "all 0.2s"
+      borderBottom: active ? "2px solid var(--brand)" : "2px solid transparent",
+      transition: "all 0.2s",
+      display: "flex",
+      alignItems: "center",
+      gap: 6,
     }),
-    body: { padding: "32px 40px", maxWidth: 1200, margin: "0 auto" },
+    main: {
+      flex: 1,
+      maxWidth: 1000,
+      margin: "0 auto",
+      padding: "32px 24px",
+      width: "100%",
+    },
     heading: { fontSize: "1.6rem", fontWeight: 800, color: "var(--text-primary)", marginBottom: 4, fontFamily: "'Fraunces', serif" },
     subheading: { fontSize: "0.9rem", color: "var(--text-secondary)", marginBottom: 28 },
     statsRow: { display: "flex", gap: 16, marginBottom: 32, flexWrap: "wrap" },
@@ -369,6 +413,12 @@ export default function AdminDashboard() {
     td: {
       padding: "14px 12px", fontSize: "0.85rem", color: "var(--text-secondary)",
       borderBottom: "1px solid var(--bg-subtle)", verticalAlign: "top"
+    },
+    footer: {
+      marginTop: 60,
+      padding: "40px 0",
+      borderTop: "1px solid var(--border)",
+      textAlign: "center",
     },
   };
 
@@ -397,45 +447,49 @@ export default function AdminDashboard() {
   const fb = feedbackData || {};
   const parts = partsData || {};
 
+  function NavBtn({ id, label, active }) {
+    return (
+      <button
+        onClick={() => setTab(id)}
+        style={styles.navTab(active)}
+      >
+        {label}
+      </button>
+    );
+  }
+
   return (
     <div style={styles.page}>
-      {/* ── Nav ── */}
-      <nav style={styles.nav}>
-        <div style={styles.logo}>
-          <div style={styles.logoIcon}>🔧</div>
-          AirHome
-          <span style={styles.adminBadge}>ADMIN</span>
-        </div>
-        <div style={{ flex: 1 }} />
-        <div
-          style={styles.navTab(tab === "feedback")}
-          onClick={() => setTab("feedback")}
-        >
-          Customer Feedback
-        </div>
-        <div
-          style={styles.navTab(tab === "parts")}
-          onClick={() => setTab("parts")}
-        >
-          Parts Analytics
-        </div>
-        <div
-          style={styles.navTab(tab === "approvals")}
-          onClick={() => setTab("approvals")}
-        >
-          Parts Approval
-        </div>
-        <div style={{
-          marginLeft: 24, width: 36, height: 36,
-          background: "#f3f4f6", borderRadius: "50%",
-          display: "flex", alignItems: "center", justifyContent: "center",
-          fontSize: "0.85rem", color: "#374151", fontWeight: 700, cursor: "pointer"
-        }}>
-          A
-        </div>
-      </nav>
+      {/* ── Header ── */}
+      <header style={styles.header}>
+        <div style={styles.nav}>
+          <div style={styles.navLogo} onClick={() => setTab("feedback")}>
+            <div style={styles.navLogoIcon}><Icon.tool /></div>
+            <div style={styles.navLogoText}>
+              Air<span style={{ color: "var(--brand)" }}>Home</span>{" "}
+              <span style={{ fontWeight: 400, opacity: 0.6, fontSize: 14, marginLeft: 8 }}>Ops</span>
+            </div>
 
-      <div style={styles.body}>
+          </div>
+
+          <nav style={{ display: "flex", gap: 32, marginLeft: 48, flex: 1 }}>
+            <NavBtn id="approvals" label="Parts Approval" active={tab === "approvals"} />
+            <NavBtn id="feedback" label="Customer Feedback" active={tab === "feedback"} />
+            <NavBtn id="parts" label="Parts Analytics" active={tab === "parts"} />
+          </nav>
+
+          <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
+            <div className="badge" style={{ background: "var(--brand-light)", color: "var(--brand)", textTransform: "none", borderRadius: 8 }}>
+              <span style={{ opacity: 0.6, marginRight: 4 }}>ID:</span> ADMIN
+            </div>
+            <button className="btn btn-outline" style={{ padding: "6px 12px", fontSize: 12 }} onClick={() => window.location.href = "/"}>
+              Logout
+            </button>
+          </div>
+        </div>
+      </header>
+
+      <main style={styles.main}>
 
         {/* ════════════════════════════════════════════
             TAB 1 — CUSTOMER FEEDBACK
@@ -639,7 +693,15 @@ export default function AdminDashboard() {
         ════════════════════════════════════════════ */}
         {tab === "approvals" && <PartsApprovalTab />}
 
-      </div>
+      </main>
+
+      {/* ── Footer ── */}
+      <footer style={styles.footer}>
+        <div style={{ maxWidth: 1000, margin: "0 auto", padding: "0 24px" }}>
+          <div className="display-font" style={{ fontSize: 18, fontWeight: 700, marginBottom: 8 }}>Fiamma Field Operations</div>
+          <div style={{ fontSize: 12, color: "var(--text-muted)" }}>© 2026 Fiamma Services. Internal Technician Use Only.</div>
+        </div>
+      </footer>
     </div>
   );
 }
