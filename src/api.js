@@ -245,6 +245,19 @@ export async function approveOrRejectParts(ticketId, approved) {
     });
 }
 
+/**
+ * Submit quotation with customer signature.
+ * This will email the quotation to customer and send to admin for approval.
+ *
+ * @param {Object} quotationData - contains jobId, customer info, parts, quantities, signature, etc.
+ */
+export async function submitQuotation(quotationData) {
+    return apiFetch("/portal/quotation/submit", {
+        method: "POST",
+        body: JSON.stringify(quotationData),
+    });
+}
+
 // Admin — all feedback + technician ratings
 export async function getAdminFeedback() {
   const res = await fetch(`${API_BASE}/admin/feedback`);

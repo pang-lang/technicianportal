@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react"; 
+import { useState, useEffect, useCallback, useRef } from "react"; 
 import AdminDashboard from "./AdminDashboard";   
 import MyRatings from "./MyRatings";                  
 import {
@@ -9,6 +9,7 @@ import {
   approveParts as apiApproveParts,
   completeJob as apiCompleteJob,
   fetchEscalations,
+  submitQuotation as apiSubmitQuotation,
 } from "./api";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -445,17 +446,263 @@ function LogFaultView({ job, onDone, setView }) {
   );
 }
 
-function PartsView({ job, onDone, setView }) {
-  const parts  = job.predictedParts || [];
-  const total  = parts.reduce((s, p) => s + p.cost, 0);
-  const [approved, setApproved]     = useState(job.partsApproved);
+// ── Signature Pad Component ─────────────────────────────────────────────────
+function SignaturePad({ onSave, width = 400, height = 150 }) {
+  const canvasRef = useRef(null);
+  const [isDrawing, setIsDrawing] = useState(false);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d");
+    ctx.strokeStyle = "#1a1714";
+    ctx.lineWidth = 2;
+    ctx.lineCap = "round";
+    ctx.lineJoin = "round";
+  }, []);
+
+  function getPos(e) {
+    const canvas = canvasRef.current;
+    const rect = canvas.getBoundingClientRect();
+    const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+    const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+    return {
+      x: clientX - rect.left,
+      y: clientY - rect.top
+    };
+  }
+
+  function startDrawing(e) {
+    e.preventDefault();
+    setIsDrawing(true);
+    const canvas = canvasRef.current;
+    const ctx = canvas.getContext("2d");
+    const pos = getPos(e);
+    ctx.beginPath();
+    ctx.moveTo(pos.x, pos.y);
+  }
+
+  function draw(e) {
+    e.preventDefault();
+    if (!isDrawing) return;
+    const canvas = canvasRef.current;
+    const ctx = canvas.getContext("2d");
+    const pos = getPos(e);
+    ctx.lineTo(pos.x, pos.y);
+    ctx.stroke();
+  }
+
+  function stopDrawing() {
+    setIsDrawing(false);
+  }
+
+  function clear() {
+    const canvas = canvasRef.current;
+    const ctx = canvas.getContext("2d");
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+  }
+
+  function save() {
+    const canvas = canvasRef.current;
+    const dataUrl = canvas.toDataURL("image/png");
+    onSave(dataUrl);
+  }
+
+  return (
+    <div>
+      <div style={{ border: "2px solid var(--border)", borderRadius: 8, background: "#fff", marginBottom: 12 }}>
+        <canvas
+          ref={canvasRef}
+          width={width}
+          height={height}
+          onMouseDown={startDrawing}
+          onMouseMove={draw}
+          onMouseUp={stopDrawing}
+          onMouseLeave={stopDrawing}
+          onTouchStart={startDrawing}
+          onTouchMove={draw}
+          onTouchEnd={stopDrawing}
+          style={{ display: "block", cursor: "crosshair", touchAction: "none" }}
+        />
+      </div>
+      <div style={{ display: "flex", gap: 8, justifyContent: "center" }}>
+        <button className="btn btn-outline" onClick={clear} style={{ padding: "6px 12px", fontSize: 12 }}>Clear</button>
+        <button className="btn btn-primary" onClick={save} style={{ padding: "6px 12px", fontSize: 12 }}>Confirm Signature</button>
+      </div>
+    </div>
+  );
+}
+
+// ── Quotation Form Component ─────────────────────────────────────────────────
+function QuotationForm({ job, parts, onSubmit, onCancel }) {
+  const [quantities, setQuantities] = useState(() => {
+    const initial = {};
+    parts.forEach(p => initial[p.partId] = 1);
+    return initial;
+  });
+  const [signature, setSignature] = useState(null);
   const [submitting, setSubmitting] = useState(false);
 
-  async function requestParts() {
+  const total = parts.reduce((sum, p) => sum + (p.cost * (quantities[p.partId] || 1)), 0);
+
+  function updateQuantity(partId, qty) {
+    setQuantities(prev => ({ ...prev, [partId]: Math.max(1, parseInt(qty) || 1) }));
+  }
+
+  async function handleSubmit() {
+    if (!signature) {
+      alert("Please provide customer signature to proceed.");
+      return;
+    }
     setSubmitting(true);
-    try { await apiApproveParts(job.id, true); setApproved(true); await onDone(); }
-    catch (e) { alert(`Failed: ${e.message}`); }
-    finally { setSubmitting(false); }
+    try {
+      const quotationData = {
+        jobId: job.id,
+        customerName: job.customerName,
+        customerEmail: job.customerEmail || "",
+        parts: parts.map(p => ({
+          partId: p.partId,
+          name: p.name,
+          quantity: quantities[p.partId] || 1,
+          unitCost: p.cost,
+          totalCost: p.cost * (quantities[p.partId] || 1)
+        })),
+        totalAmount: total,
+        signature: signature,
+        createdAt: new Date().toISOString()
+      };
+      await onSubmit(quotationData);
+    } catch (e) {
+      alert(`Failed to submit: ${e.message}`);
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  return (
+    <div className="animate-in">
+      <h3 className="display-font mb-16" style={{ fontSize: 20 }}>Parts Quotation</h3>
+      
+      {/* Customer Info */}
+      <div className="card mb-16" style={{ background: "var(--brand-light)", borderColor: "var(--brand-mid)" }}>
+        <div style={{ fontSize: 12, color: "var(--text-muted)", marginBottom: 4 }}>CUSTOMER</div>
+        <div style={{ fontSize: 16, fontWeight: 700 }}>{job.customerName}</div>
+        <div className="mono" style={{ fontSize: 13, color: "var(--text-secondary)" }}>{job.id}</div>
+      </div>
+
+      {/* Parts Table with Quantity */}
+      <div className="card mb-16">
+        <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 16, color: "var(--text-primary)" }}>Quotation Items</div>
+        <div style={{ border: "1px solid var(--border)", borderRadius: "10px", overflow: "hidden" }}>
+          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+            <thead>
+              <tr style={{ background: "var(--bg-subtle)" }}>
+                <th style={{ padding: "10px 14px", textAlign: "left", fontWeight: 700, fontSize: 11, color: "var(--text-secondary)" }}>ITEM</th>
+                <th style={{ padding: "10px 14px", textAlign: "center", fontWeight: 700, fontSize: 11, color: "var(--text-secondary)", width: 80 }}>QTY</th>
+                <th style={{ padding: "10px 14px", textAlign: "right", fontWeight: 700, fontSize: 11, color: "var(--text-secondary)" }}>UNIT PRICE</th>
+                <th style={{ padding: "10px 14px", textAlign: "right", fontWeight: 700, fontSize: 11, color: "var(--text-secondary)" }}>TOTAL</th>
+              </tr>
+            </thead>
+            <tbody>
+              {parts.map((p, i) => (
+                <tr key={p.partId} style={{ borderTop: "1px solid var(--border)" }}>
+                  <td style={{ padding: "10px 14px" }}>
+                    <div style={{ fontWeight: 600 }}>{p.name}</div>
+                    <div className="mono" style={{ fontSize: 11, color: "var(--text-muted)" }}>{p.partId}</div>
+                  </td>
+                  <td style={{ padding: "10px 14px", textAlign: "center" }}>
+                    <input
+                      type="number"
+                      min="1"
+                      value={quantities[p.partId] || 1}
+                      onChange={(e) => updateQuantity(p.partId, e.target.value)}
+                      style={{
+                        width: 50,
+                        textAlign: "center",
+                        padding: "4px 8px",
+                        border: "1px solid var(--border)",
+                        borderRadius: 6,
+                        fontSize: 13
+                      }}
+                    />
+                  </td>
+                  <td style={{ padding: "10px 14px", textAlign: "right" }}>RM {p.cost.toFixed(2)}</td>
+                  <td style={{ padding: "10px 14px", textAlign: "right", fontWeight: 600 }}>
+                    RM {(p.cost * (quantities[p.partId] || 1)).toFixed(2)}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+            <tfoot>
+              <tr style={{ background: "var(--bg-subtle)", borderTop: "2px solid var(--border)" }}>
+                <td colSpan="3" style={{ padding: "12px 14px", fontWeight: 700, textAlign: "right" }}>TOTAL AMOUNT</td>
+                <td style={{ padding: "12px 14px", textAlign: "right", fontWeight: 800, color: "var(--brand)", fontSize: 16 }}>
+                  RM {total.toFixed(2)}
+                </td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+      </div>
+
+      {/* Signature Section */}
+      <div className="card mb-16">
+        <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 8, color: "var(--text-primary)" }}>Customer Confirmation</div>
+        <div style={{ fontSize: 13, color: "var(--text-secondary)", marginBottom: 16 }}>
+          Please ask the customer to review the quotation and sign below to confirm approval.
+        </div>
+        
+        {signature ? (
+          <div>
+            <div style={{ fontSize: 12, color: "var(--brand)", marginBottom: 8, fontWeight: 600 }}>✓ Signature captured</div>
+            <img src={signature} alt="Customer signature" style={{ border: "1px solid var(--border)", borderRadius: 8, maxWidth: "100%" }} />
+            <button className="btn btn-outline" onClick={() => setSignature(null)} style={{ marginTop: 8, padding: "6px 12px", fontSize: 12 }}>
+              Redraw Signature
+            </button>
+          </div>
+        ) : (
+          <SignaturePad onSave={setSignature} />
+        )}
+      </div>
+
+      {/* Action Buttons */}
+      <div style={{ display: "flex", gap: 12 }}>
+        <button 
+          className="btn btn-primary" 
+          style={{ flex: 1 }} 
+          onClick={handleSubmit} 
+          disabled={submitting || !signature}
+        >
+          {submitting ? "Submitting..." : "Submit Quotation & Request Approval"}
+        </button>
+        <button className="btn btn-outline" onClick={onCancel}>Cancel</button>
+      </div>
+    </div>
+  );
+}
+
+function PartsView({ job, onDone, setView }) {
+  const parts  = job.predictedParts || [];
+  const [showQuotation, setShowQuotation] = useState(false);
+  const [quotationSubmitted, setQuotationSubmitted] = useState(false);
+
+  async function handleQuotationSubmit(quotationData) {
+    // Call API to submit quotation with signature
+    // This will email customer and send to admin for approval
+    await apiSubmitQuotation(quotationData);
+    setQuotationSubmitted(true);
+    await onDone();
+  }
+
+  if (showQuotation) {
+    return (
+      <QuotationForm 
+        job={job} 
+        parts={parts} 
+        onSubmit={handleQuotationSubmit}
+        onCancel={() => setShowQuotation(false)}
+      />
+    );
   }
 
   return (
@@ -492,15 +739,15 @@ function PartsView({ job, onDone, setView }) {
               <tfoot>
                 <tr style={{ background: "var(--bg-subtle)", borderTop: "1px solid var(--border)" }}>
                   <td colSpan="2" style={{ padding: "12px 16px", fontWeight: 700 }}>Total Estimated Cost</td>
-                  <td style={{ padding: "12px 16px", textAlign: "right", fontWeight: 800, color: "var(--brand)", fontSize: 16 }}>RM {total.toFixed(2)}</td>
+                  <td style={{ padding: "12px 16px", textAlign: "right", fontWeight: 800, color: "var(--brand)", fontSize: 16 }}>RM {parts.reduce((s, p) => s + p.cost, 0).toFixed(2)}</td>
                 </tr>
               </tfoot>
             </table>
           </div>
           <div style={{ display: "flex", gap: 12 }}>
-            {!approved
-              ? <button className="btn btn-primary" style={{ flex: 1 }} onClick={requestParts} disabled={submitting}>{submitting ? "Submitting..." : "Request Parts Approval"}</button>
-              : <div style={{ flex: 1, padding: "10px", background: "var(--brand)", color: "#fff", borderRadius: "8px", textAlign: "center", fontWeight: 600 }}>Parts Requested & Approved</div>}
+            {!quotationSubmitted
+              ? <button className="btn btn-primary" style={{ flex: 1 }} onClick={() => setShowQuotation(true)}>Generate Quotation & Get Customer Signature</button>
+              : <div style={{ flex: 1, padding: "10px", background: "var(--brand)", color: "#fff", borderRadius: "8px", textAlign: "center", fontWeight: 600 }}>Quotation Submitted for Approval</div>}
             <button className="btn btn-outline" onClick={() => setView("detail")}>Back to Details</button>
           </div>
         </>
