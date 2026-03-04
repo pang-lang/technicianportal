@@ -120,16 +120,10 @@ function LoginPage({ onLogin }) {
   const [error, setError] = useState("");
 
   function handleLogin() {
-    // Technician login
     if (user === "hafiz" && pass === "demo123") {
-      onLogin("technician");
-    }
-    // Admin login
-    else if (user === "admin" && pass === "demo123") {
-      onLogin("admin");
-    }
-    else {
-      setError("Invalid credentials. Use hafiz/demo123 (Technician) or admin/demo123 (Admin)");
+      onLogin();
+    } else {
+      setError("Invalid credentials. Use hafiz / demo123");
     }
   }
 
@@ -138,14 +132,14 @@ function LoginPage({ onLogin }) {
       <div className="card login-card animate-in">
         <div className="login-header">
           <div className="display-font" style={{ fontSize: 13, textTransform: "uppercase", letterSpacing: "0.1em", fontWeight: 700, marginBottom: 8, opacity: 0.8 }}>Fiamma · Field Ops</div>
-          <h2 className="display-font">Portal Login</h2>
-          <p>Sign in to access your dashboard</p>
+          <h2 className="display-font">Technician Portal</h2>
+          <p>Sign in to view your assigned jobs</p>
         </div>
         <div className="login-body">
           {error && <div style={{ background: "#ffe4e6", border: "1px solid #fecdd3", color: "#e11d48", padding: "12px", borderRadius: "8px", fontSize: "14px", marginBottom: "20px" }}>{error}</div>}
           <div className="form-group">
             <label className="form-label">Username</label>
-            <input className="form-control" placeholder="hafiz or admin" value={user}
+            <input className="form-control" placeholder="hafiz" value={user}
               onChange={e => setUser(e.target.value)} onKeyDown={e => e.key === "Enter" && handleLogin()} />
           </div>
           <div className="form-group">
@@ -154,11 +148,6 @@ function LoginPage({ onLogin }) {
               onChange={e => setPass(e.target.value)} onKeyDown={e => e.key === "Enter" && handleLogin()} />
           </div>
           <button className="btn btn-primary btn-full mt-8" onClick={handleLogin}>Sign In</button>
-          <div style={{ marginTop: 16, padding: "12px", background: "var(--bg-subtle)", borderRadius: 8, fontSize: 12, color: "var(--text-secondary)" }}>
-            <strong>Demo Credentials:</strong><br/>
-            Technician: hafiz / demo123<br/>
-            Admin: admin / demo123
-          </div>
         </div>
       </div>
     </div>
@@ -886,7 +875,12 @@ function EscalationPage() {
 // ROOT APP
 // ══════════════════════════════════════════════════════════════════════════════
 export default function App() {
-  const [userRole, setUserRole]         = useState(null); // null | "technician" | "admin"
+
+  if (window.location.pathname === "/admin") {
+    return <AdminDashboard />;
+  }
+
+  const [isLoggedIn, setIsLoggedIn]     = useState(false);
   const [jobs, setJobs]                 = useState([]);
   const [stats, setStats]               = useState({ total: 0, active: 0, breached: 0, completed: 0 });
   const [selectedJobId, setSelectedJobId] = useState(null);
@@ -894,23 +888,6 @@ export default function App() {
   const [loading, setLoading]           = useState(false);
   const [error, setError]               = useState(null);
   const [alertBadge, setAlertBadge]     = useState(0);
-
-  // Handle direct access to /admin URL
-  if (window.location.pathname === "/admin" && !userRole) {
-    // Redirect to login if trying to access admin directly without login
-    window.history.replaceState(null, "", "/");
-  }
-
-  // Redirect admin to /admin URL
-  if (userRole === "admin" && window.location.pathname !== "/admin") {
-    window.history.replaceState(null, "", "/admin");
-    return <AdminDashboard />;
-  }
-
-  // Show admin dashboard when on /admin and logged in as admin
-  if (userRole === "admin" || (window.location.pathname === "/admin" && userRole === "admin")) {
-    return <AdminDashboard />;
-  }
 
   const loadJobs = useCallback(async () => {
     setLoading(true); setError(null);
@@ -930,23 +907,10 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    if (userRole === "technician") { loadJobs(); loadBadges(); }
-  }, [userRole, loadJobs, loadBadges]);
+    if (isLoggedIn) { loadJobs(); loadBadges(); }
+  }, [isLoggedIn, loadJobs, loadBadges]);
 
-  function handleLogin(role) {
-    setUserRole(role);
-    if (role === "admin") {
-      window.history.replaceState(null, "", "/admin");
-    }
-  }
-
-  function handleLogout() {
-    setUserRole(null);
-    setSelectedJobId(null);
-    window.history.replaceState(null, "", "/");
-  }
-
-  if (!userRole) return <LoginPage onLogin={handleLogin} />;
+  if (!isLoggedIn) return <LoginPage onLogin={() => setIsLoggedIn(true)} />;
 
   function NavBtn({ id, label, badge, icon }) {
     const active = view === id && !selectedJobId;
@@ -986,7 +950,7 @@ export default function App() {
             <div className="badge" style={{ background: "var(--brand-light)", color: "var(--brand)", textTransform: "none", borderRadius: 8 }}>
               <span style={{ opacity: 0.6, marginRight: 4 }}>ID:</span> TECH-001
             </div>
-            <button className="btn btn-outline" style={{ padding: "6px 12px", fontSize: 12 }} onClick={handleLogout}>
+            <button className="btn btn-outline" style={{ padding: "6px 12px", fontSize: 12 }} onClick={() => setIsLoggedIn(false)}>
               Logout
             </button>
           </div>
