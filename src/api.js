@@ -16,7 +16,8 @@ async function apiFetch(path, options = {}) {
             let detail = `API error ${res.status}`;
             try {
                 const body = await res.json();
-                detail = body.detail || detail;
+                const d = body.detail || detail;
+                detail = typeof d === 'string' ? d : JSON.stringify(d);
             } catch (_) { /* ignore */ }
             throw new Error(detail);
         }
@@ -121,14 +122,14 @@ function mapPriorityToUrgency(priority) {
 
 function mapStatus(status) {
     return {
-        "Open":           "ASSIGNED",
-        "In Progress":    "JOB_STARTED",
-        "JOB_STARTED":    "JOB_STARTED",
-        "ASSIGNED":       "ASSIGNED",
+        "Open": "ASSIGNED",
+        "In Progress": "JOB_STARTED",
+        "JOB_STARTED": "JOB_STARTED",
+        "ASSIGNED": "ASSIGNED",
         "AWAITING_PARTS": "AWAITING_PARTS",
-        "PROCEED_JOB":    "PROCEED_JOB",
-        "COMPLETED":      "COMPLETED",
-        "CANCELLED":      "CANCELLED",
+        "PROCEED_JOB": "PROCEED_JOB",
+        "COMPLETED": "COMPLETED",
+        "CANCELLED": "CANCELLED",
     }[status] || status;
 }
 
@@ -295,14 +296,14 @@ export async function submitServiceReport(ticketId, reportData) {
     return apiFetch(`/portal/tickets/${ticketId}/service-report`, {
         method: "POST",
         body: JSON.stringify({
-            tech_id:           reportData.techId,
-            fault_type:        reportData.faultType,
-            fault_notes:       reportData.faultNotes,
-            work_done_notes:   reportData.workDoneNotes,
-            parts_used:        reportData.partsUsed,
-            total_parts_cost:  reportData.totalPartsCost,
-            completed_at:      reportData.completedAt,
-            tech_signature:    reportData.signature,
+            tech_id: reportData.techId,
+            fault_type: reportData.faultType,
+            fault_notes: reportData.faultNotes,
+            work_done_notes: reportData.workDoneNotes,
+            parts_used: reportData.partsUsed,
+            total_parts_cost: reportData.totalPartsCost,
+            completed_at: reportData.completedAt,
+            tech_signature: reportData.signature,
         }),
     });
 }
@@ -319,28 +320,28 @@ export async function fetchTicketDocuments(ticketId) {
     return {
         quotation: data.quotation
             ? {
-                ticketId:    data.quotation.ticket_id,
+                ticketId: data.quotation.ticket_id,
                 customerName: data.quotation.customer_name,
                 customerEmail: data.quotation.customer_email,
-                parts:       data.quotation.parts || [],
+                parts: data.quotation.parts || [],
                 totalAmount: data.quotation.total_amount,
-                signature:   data.quotation.signature,
-                createdAt:   data.quotation.created_at,
+                signature: data.quotation.signature,
+                createdAt: data.quotation.created_at,
                 emailSentAt: data.quotation.email_sent_at,
             }
             : null,
         serviceReport: data.service_report
             ? {
-                ticketId:       data.service_report.ticket_id,
-                techId:         data.service_report.tech_id,
-                faultType:      data.service_report.fault_type,
-                faultNotes:     data.service_report.fault_notes,
-                workDoneNotes:  data.service_report.work_done_notes,
-                partsUsed:      data.service_report.parts_used || [],
+                ticketId: data.service_report.ticket_id,
+                techId: data.service_report.tech_id,
+                faultType: data.service_report.fault_type,
+                faultNotes: data.service_report.fault_notes,
+                workDoneNotes: data.service_report.work_done_notes,
+                partsUsed: data.service_report.parts_used || [],
                 totalPartsCost: data.service_report.total_parts_cost,
-                completedAt:    data.service_report.completed_at,
-                techSignature:  data.service_report.tech_signature,
-                submittedAt:    data.service_report.submitted_at,
+                completedAt: data.service_report.completed_at,
+                techSignature: data.service_report.tech_signature,
+                submittedAt: data.service_report.submitted_at,
             }
             : null,
     };

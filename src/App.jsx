@@ -43,26 +43,26 @@ function slaPercent(createdAt, deadlineAt) {
 
 // ── Status / urgency / stock configs ─────────────────────────────────────────
 const STATUS_CFG = {
-  ASSIGNED:       { label: "Assigned",       color: "#1d5fb3", bg: "#e8f0fc" },
-  JOB_STARTED:    { label: "Job Started",    color: "#e05c2a", bg: "#fdf0eb" },
+  ASSIGNED: { label: "Assigned", color: "#1d5fb3", bg: "#e8f0fc" },
+  JOB_STARTED: { label: "Job Started", color: "#e05c2a", bg: "#fdf0eb" },
   AWAITING_PARTS: { label: "Awaiting Parts", color: "#7c3aed", bg: "#f3e8ff" },
-  PROCEED_JOB:    { label: "Proceed Job",    color: "#0891b2", bg: "#e0f7fa" },
-  COMPLETED:      { label: "Completed",      color: "#16a34a", bg: "#dcfce7" },
-  CANCELLED:      { label: "Cancelled",      color: "#9c9590", bg: "#f3f1ee" },
-  Open:           { label: "Open",           color: "#1d5fb3", bg: "#e8f0fc" },
+  PROCEED_JOB: { label: "Proceed Job", color: "#0891b2", bg: "#e0f7fa" },
+  COMPLETED: { label: "Completed", color: "#16a34a", bg: "#dcfce7" },
+  CANCELLED: { label: "Cancelled", color: "#9c9590", bg: "#f3f1ee" },
+  Open: { label: "Open", color: "#1d5fb3", bg: "#e8f0fc" },
 };
 
 const URGENCY_CFG = {
   CRITICAL: { label: "CRITICAL", color: "#e11d48", bg: "#ffe4e6" },
   STANDARD: { label: "STANDARD", color: "#e05c2a", bg: "#fdf0eb" },
-  LOW:      { label: "LOW",      color: "#16a34a", bg: "#dcfce7" },
+  LOW: { label: "LOW", color: "#16a34a", bg: "#dcfce7" },
 };
 
 const STOCK_CFG = {
-  AVAILABLE: { label: "AVAILABLE",    color: "#16a34a", bg: "#dcfce7" },
-  LOW:       { label: "LOW STOCK",    color: "#e05c2a", bg: "#fdf0eb" },
-  OUT:       { label: "OUT OF STOCK", color: "#e11d48", bg: "#ffe4e6" },
-  UNKNOWN:   { label: "UNKNOWN",      color: "#9c9590", bg: "#f3f1ee" },
+  AVAILABLE: { label: "AVAILABLE", color: "#16a34a", bg: "#dcfce7" },
+  LOW: { label: "LOW STOCK", color: "#e05c2a", bg: "#fdf0eb" },
+  OUT: { label: "OUT OF STOCK", color: "#e11d48", bg: "#ffe4e6" },
+  UNKNOWN: { label: "UNKNOWN", color: "#9c9590", bg: "#f3f1ee" },
 };
 
 // ── Shared UI atoms ──────────────────────────────────────────────────────────
@@ -98,18 +98,18 @@ function Divider({ label }) {
 
 // ── Icons ─────────────────────────────────────────────────────────────────────
 const Icon = {
-  jobs:    () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="2" y="7" width="20" height="14" rx="2" /><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2" /></svg>,
-  alert:   () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" /><line x1="12" y1="9" x2="12" y2="13" /><line x1="12" y1="17" x2="12.01" y2="17" /></svg>,
+  jobs: () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="2" y="7" width="20" height="14" rx="2" /><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2" /></svg>,
+  alert: () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" /><line x1="12" y1="9" x2="12" y2="13" /><line x1="12" y1="17" x2="12.01" y2="17" /></svg>,
   approve: () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M9 11l3 3L22 4" /><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" /></svg>,
   refresh: () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="23 4 23 10 17 10" /><polyline points="1 20 1 14 7 14" /><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" /></svg>,
-  back:    () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="15 18 9 12 15 6" /></svg>,
-  tool:    () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z" /></svg>,
+  back: () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="15 18 9 12 15 6" /></svg>,
+  tool: () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z" /></svg>,
   package: () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="16.5" y1="9.4" x2="7.5" y2="4.21" /><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" /><polyline points="3.27 6.96 12 12.01 20.73 6.96" /><line x1="12" y1="22.08" x2="12" y2="12" /></svg>,
-  check:   () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="20 6 9 17 4 12" /></svg>,
-  clock:   () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" /></svg>,
-  phone:   () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12 19.79 19.79 0 0 1 1.61 3.53 2 2 0 0 1 3.6 1.37h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 8.1a16 16 0 0 0 6 6l.91-.91a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 21.73 15.5l.19 1.42z" /></svg>,
-  user:    () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" /></svg>,
-  mail:    () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" /><polyline points="22,6 12,13 2,6" /></svg>,
+  check: () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="20 6 9 17 4 12" /></svg>,
+  clock: () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" /></svg>,
+  phone: () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12 19.79 19.79 0 0 1 1.61 3.53 2 2 0 0 1 3.6 1.37h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 8.1a16 16 0 0 0 6 6l.91-.91a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 21.73 15.5l.19 1.42z" /></svg>,
+  user: () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" /></svg>,
+  mail: () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" /><polyline points="22,6 12,13 2,6" /></svg>,
 };
 
 
@@ -119,8 +119,8 @@ const Icon = {
 // — From v1: clean visual style retained
 // ══════════════════════════════════════════════════════════════════════════════
 function LoginPage({ onLogin }) {
-  const [user,  setUser]  = useState("");
-  const [pass,  setPass]  = useState("");
+  const [user, setUser] = useState("");
+  const [pass, setPass] = useState("");
   const [error, setError] = useState("");
 
   function handleLogin() {
@@ -177,13 +177,13 @@ function LoginPage({ onLogin }) {
 // ══════════════════════════════════════════════════════════════════════════════
 function MyJobsPage({ jobs, stats, loading, error, onSelectJob, onRetry }) {
   const active = jobs.filter(j => j.status !== "COMPLETED" && j.status !== "CANCELLED");
-  const done   = jobs.filter(j => j.status === "COMPLETED");
+  const done = jobs.filter(j => j.status === "COMPLETED");
 
   function JobItem({ job }) {
-    const urg  = URGENCY_CFG[job.urgencyLevel] || URGENCY_CFG.STANDARD;
-    const stat = STATUS_CFG[job.status]        || STATUS_CFG.ASSIGNED;
-    const sla  = timeLeft(job.slaDeadlineAt);
-    const pct  = job.slaPercentage != null ? Math.round(job.slaPercentage) : slaPercent(job.createdAt, job.slaDeadlineAt);
+    const urg = URGENCY_CFG[job.urgencyLevel] || URGENCY_CFG.STANDARD;
+    const stat = STATUS_CFG[job.status] || STATUS_CFG.ASSIGNED;
+    const sla = timeLeft(job.slaDeadlineAt);
+    const pct = job.slaPercentage != null ? Math.round(job.slaPercentage) : slaPercent(job.createdAt, job.slaDeadlineAt);
 
     return (
       <div className="card card-hover mb-16" onClick={() => onSelectJob(job)} style={{ cursor: "pointer", display: "flex", alignItems: "center", gap: "20px" }}>
@@ -228,7 +228,7 @@ function MyJobsPage({ jobs, stats, loading, error, onSelectJob, onRetry }) {
   }
 
   if (loading) return <Spinner message="Fetching your assignments..." />;
-  if (error)   return <ErrorBanner message={error} onRetry={onRetry} />;
+  if (error) return <ErrorBanner message={error} onRetry={onRetry} />;
 
   return (
     <div className="animate-in">
@@ -276,10 +276,10 @@ function MyJobsPage({ jobs, stats, loading, error, onSelectJob, onRetry }) {
 // — From v2: cleaner back button style
 // ══════════════════════════════════════════════════════════════════════════════
 function JobDetailPage({ jobId, onBack, onJobMutated }) {
-  const [job,     setJob]     = useState(null);
+  const [job, setJob] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [error,   setError]   = useState(null);
-  const [view,    setView]    = useState("detail");
+  const [error, setError] = useState(null);
+  const [view, setView] = useState("detail");
 
   const loadDetail = useCallback(async () => {
     setLoading(true); setError(null);
@@ -293,23 +293,23 @@ function JobDetailPage({ jobId, onBack, onJobMutated }) {
   async function reloadAfterMutation() { await loadDetail(); onJobMutated(); }
 
   if (loading) return <Spinner message="Loading job details..." />;
-  if (error)   return <ErrorBanner message={error} onRetry={loadDetail} />;
-  if (!job)    return null;
+  if (error) return <ErrorBanner message={error} onRetry={loadDetail} />;
+  if (!job) return null;
 
-  const urg  = URGENCY_CFG[job.urgencyLevel] || URGENCY_CFG.STANDARD;
-  const stat = STATUS_CFG[job.status]        || STATUS_CFG.ASSIGNED;
-  const sla  = timeLeft(job.slaDeadlineAt);
-  const pct  = job.slaPercentage != null ? Math.round(job.slaPercentage) : slaPercent(job.createdAt, job.slaDeadlineAt);
+  const urg = URGENCY_CFG[job.urgencyLevel] || URGENCY_CFG.STANDARD;
+  const stat = STATUS_CFG[job.status] || STATUS_CFG.ASSIGNED;
+  const sla = timeLeft(job.slaDeadlineAt);
+  const pct = job.slaPercentage != null ? Math.round(job.slaPercentage) : slaPercent(job.createdAt, job.slaDeadlineAt);
 
   // Full timeline including PROCEED_JOB (from v1)
   const STEPS = [
-    { key: "ASSIGNED",       label: "Ticket Assigned", icon: <Icon.user /> },
-    { key: "JOB_STARTED",    label: "Job Started",     icon: <Icon.tool /> },
-    { key: "AWAITING_PARTS", label: "Awaiting Parts",  icon: <Icon.package /> },
-    { key: "PROCEED_JOB",    label: "Parts Approved",  icon: <Icon.approve /> },
-    { key: "COMPLETED",      label: "Completed",       icon: <Icon.check /> },
+    { key: "ASSIGNED", label: "Ticket Assigned", icon: <Icon.user /> },
+    { key: "JOB_STARTED", label: "Job Started", icon: <Icon.tool /> },
+    { key: "AWAITING_PARTS", label: "Awaiting Parts", icon: <Icon.package /> },
+    { key: "PROCEED_JOB", label: "Parts Approved", icon: <Icon.approve /> },
+    { key: "COMPLETED", label: "Completed", icon: <Icon.check /> },
   ];
-  const ORDER  = ["ASSIGNED", "JOB_STARTED", "AWAITING_PARTS", "PROCEED_JOB", "COMPLETED"];
+  const ORDER = ["ASSIGNED", "JOB_STARTED", "AWAITING_PARTS", "PROCEED_JOB", "COMPLETED"];
   const curIdx = ORDER.indexOf(job.status);
 
   return (
@@ -459,8 +459,8 @@ function JobDetailPage({ jobId, onBack, onJobMutated }) {
           )}
 
           {/* ── Sub-views ── */}
-          {view === "fault"    && <LogFaultView    job={job} onDone={reloadAfterMutation} setView={setView} />}
-          {view === "parts"    && <PartsView       job={job} onDone={reloadAfterMutation} setView={setView} />}
+          {view === "fault" && <LogFaultView job={job} onDone={reloadAfterMutation} setView={setView} />}
+          {view === "parts" && <PartsView job={job} onDone={reloadAfterMutation} setView={setView} />}
           {view === "complete" && <CompleteJobView job={job} onDone={reloadAfterMutation} setView={setView} onBack={onBack} />}
 
           {/* ── COMPLETED: show documents archive (from v1) ── */}
@@ -483,8 +483,8 @@ function JobDetailPage({ jobId, onBack, onJobMutated }) {
           <h3 className="display-font mb-16" style={{ fontSize: 20 }}>Job History</h3>
           <div className="timeline">
             {STEPS.map((step, i) => {
-              const stepIdx  = ORDER.indexOf(step.key);
-              const isDone   = stepIdx < curIdx;
+              const stepIdx = ORDER.indexOf(step.key);
+              const isDone = stepIdx < curIdx;
               const isActive = stepIdx === curIdx;
               return (
                 <div key={step.key} className="timeline-item">
@@ -496,7 +496,7 @@ function JobDetailPage({ jobId, onBack, onJobMutated }) {
                   </div>
                   <div className="timeline-content">
                     <div className="timeline-title" style={{ color: isActive ? "var(--brand)" : isDone ? "var(--text-primary)" : "var(--text-muted)" }}>{step.label}</div>
-                    {isDone   && <div className="timeline-meta">{timeAgo(job.createdAt)}</div>}
+                    {isDone && <div className="timeline-meta">{timeAgo(job.createdAt)}</div>}
                     {isActive && <div className="timeline-meta" style={{ color: "var(--brand)", fontWeight: 600 }}>Active Phase</div>}
                   </div>
                 </div>
@@ -515,11 +515,11 @@ function JobDetailPage({ jobId, onBack, onJobMutated }) {
 // — From v1: shows "no parts required" vs "awaiting parts" result states
 // ══════════════════════════════════════════════════════════════════════════════
 function LogFaultView({ job, onDone, setView }) {
-  const [faultType,  setFaultType]  = useState(job.faultType || "");
-  const [notes,      setNotes]      = useState(job.faultNotes || "");
+  const [faultType, setFaultType] = useState(job.faultType || "");
+  const [notes, setNotes] = useState(job.faultNotes || "");
   const [submitting, setSubmitting] = useState(false);
-  const [result,     setResult]     = useState(null);
-  const [error,      setError]      = useState(null);
+  const [result, setResult] = useState(null);
+  const [error, setError] = useState(null);
 
   async function submit() {
     if (!faultType) return;
@@ -605,7 +605,7 @@ function LogFaultView({ job, onDone, setView }) {
 // — Identical in both versions; using v1 (more concise)
 // ══════════════════════════════════════════════════════════════════════════════
 function SignaturePad({ onSave, width = 400, height = 150 }) {
-  const canvasRef   = useRef(null);
+  const canvasRef = useRef(null);
   const [isDrawing, setIsDrawing] = useState(false);
 
   useEffect(() => {
@@ -613,23 +613,23 @@ function SignaturePad({ onSave, width = 400, height = 150 }) {
     if (!canvas) return;
     const ctx = canvas.getContext("2d");
     ctx.strokeStyle = "#1a1714";
-    ctx.lineWidth   = 2;
-    ctx.lineCap     = "round";
-    ctx.lineJoin    = "round";
+    ctx.lineWidth = 2;
+    ctx.lineCap = "round";
+    ctx.lineJoin = "round";
   }, []);
 
   function getPos(e) {
-    const rect    = canvasRef.current.getBoundingClientRect();
+    const rect = canvasRef.current.getBoundingClientRect();
     const clientX = e.touches ? e.touches[0].clientX : e.clientX;
     const clientY = e.touches ? e.touches[0].clientY : e.clientY;
     return { x: clientX - rect.left, y: clientY - rect.top };
   }
 
   function startDrawing(e) { e.preventDefault(); setIsDrawing(true); const ctx = canvasRef.current.getContext("2d"); const p = getPos(e); ctx.beginPath(); ctx.moveTo(p.x, p.y); }
-  function draw(e)         { e.preventDefault(); if (!isDrawing) return; const ctx = canvasRef.current.getContext("2d"); const p = getPos(e); ctx.lineTo(p.x, p.y); ctx.stroke(); }
-  function stopDrawing()   { setIsDrawing(false); }
-  function clear()         { const c = canvasRef.current; c.getContext("2d").clearRect(0, 0, c.width, c.height); }
-  function save()          { onSave(canvasRef.current.toDataURL("image/png")); }
+  function draw(e) { e.preventDefault(); if (!isDrawing) return; const ctx = canvasRef.current.getContext("2d"); const p = getPos(e); ctx.lineTo(p.x, p.y); ctx.stroke(); }
+  function stopDrawing() { setIsDrawing(false); }
+  function clear() { const c = canvasRef.current; c.getContext("2d").clearRect(0, 0, c.width, c.height); }
+  function save() { onSave(canvasRef.current.toDataURL("image/png")); }
 
   return (
     <div>
@@ -643,7 +643,7 @@ function SignaturePad({ onSave, width = 400, height = 150 }) {
       </div>
       <div style={{ display: "flex", gap: 8, justifyContent: "center" }}>
         <button className="btn btn-outline" onClick={clear} style={{ padding: "6px 12px", fontSize: 12 }}>Clear</button>
-        <button className="btn btn-primary" onClick={save}  style={{ padding: "6px 12px", fontSize: 12 }}>Confirm Signature</button>
+        <button className="btn btn-primary" onClick={save} style={{ padding: "6px 12px", fontSize: 12 }}>Confirm Signature</button>
       </div>
     </div>
   );
@@ -656,9 +656,10 @@ function SignaturePad({ onSave, width = 400, height = 150 }) {
 //   email warning. Unit price column from v2 merged in.
 // ══════════════════════════════════════════════════════════════════════════════
 function QuotationForm({ job, currentParts, onSubmit, onCancel }) {
-  const [signature,  setSignature]  = useState(null);
+  const [signature, setSignature] = useState(null);
+  const [email, setEmail] = useState(job.customerEmail || "");
   const [submitting, setSubmitting] = useState(false);
-  const [error,      setError]      = useState(null);
+  const [error, setError] = useState(null);
 
   const total = currentParts.reduce((sum, p) => sum + (p.cost * (p.quantity || 1)), 0);
 
@@ -667,14 +668,14 @@ function QuotationForm({ job, currentParts, onSubmit, onCancel }) {
     setSubmitting(true); setError(null);
     try {
       const quotationData = {
-        jobId:         job.id,
-        customerName:  job.customerName,
-        customerEmail: job.customerEmail,
+        jobId: job.id,
+        customerName: job.customerName,
+        customerEmail: email,
         parts: currentParts.map(p => ({
-          partId:    p.partId,
-          name:      p.name,
-          quantity:  p.quantity || 1,
-          unitCost:  p.cost,
+          partId: p.partId,
+          name: p.name,
+          quantity: p.quantity || 1,
+          unitCost: p.cost,
           totalCost: p.cost * (p.quantity || 1),
         })),
         totalAmount: total,
@@ -713,10 +714,10 @@ function QuotationForm({ job, currentParts, onSubmit, onCancel }) {
         <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
           <thead>
             <tr style={{ background: "var(--bg-subtle)" }}>
-              <th style={{ padding: "8px 12px", textAlign: "left",   fontWeight: 700, fontSize: 11, color: "var(--text-secondary)" }}>PART</th>
+              <th style={{ padding: "8px 12px", textAlign: "left", fontWeight: 700, fontSize: 11, color: "var(--text-secondary)" }}>PART</th>
               <th style={{ padding: "8px 12px", textAlign: "center", fontWeight: 700, fontSize: 11, color: "var(--text-secondary)" }}>QTY</th>
-              <th style={{ padding: "8px 12px", textAlign: "right",  fontWeight: 700, fontSize: 11, color: "var(--text-secondary)" }}>UNIT</th>
-              <th style={{ padding: "8px 12px", textAlign: "right",  fontWeight: 700, fontSize: 11, color: "var(--text-secondary)" }}>TOTAL</th>
+              <th style={{ padding: "8px 12px", textAlign: "right", fontWeight: 700, fontSize: 11, color: "var(--text-secondary)" }}>UNIT</th>
+              <th style={{ padding: "8px 12px", textAlign: "right", fontWeight: 700, fontSize: 11, color: "var(--text-secondary)" }}>TOTAL</th>
             </tr>
           </thead>
           <tbody>
@@ -751,9 +752,17 @@ function QuotationForm({ job, currentParts, onSubmit, onCancel }) {
         )}
       </div>
 
-      <div style={{ padding: "10px 14px", background: "var(--bg-subtle)", borderRadius: 8, fontSize: 12, color: "var(--text-muted)", marginBottom: 16 }}>
-        📧 Customer email: <strong>{job.customerEmail || "not set"}</strong>
-        {!job.customerEmail && <span style={{ color: "var(--accent)", marginLeft: 6 }}>⚠ No email on file — quotation will be saved but not emailed.</span>}
+      <div className="card mb-16" style={{ background: "var(--bg-subtle)" }}>
+        <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 12 }}>Confirm Customer Email</div>
+        <input
+          className="form-control"
+          type="email"
+          placeholder="Enter recipient email..."
+          value={email}
+          onChange={e => setEmail(e.target.value)}
+          style={{ background: "#fff" }}
+        />
+        {!email && <div style={{ color: "var(--accent)", fontSize: 11, marginTop: 4, fontWeight: 600 }}>⚠ Required — quotation will be saved but cannot be emailed.</div>}
       </div>
 
       <div style={{ display: "flex", gap: 12 }}>
@@ -777,10 +786,11 @@ function PartsView({ job, onDone, setView }) {
   const [currentParts, setCurrentParts] = useState(() =>
     (job.predictedParts || []).map(p => ({ ...p, quantity: 1, isPredicted: true }))
   );
-  const [newPartName,        setNewPartName]        = useState("");
-  const [newPartPrice,       setNewPartPrice]        = useState("");
-  const [showQuotation,      setShowQuotation]       = useState(false);
-  const [quotationSubmitted, setQuotationSubmitted]  = useState(false);
+  const [newPartName, setNewPartName] = useState("");
+  const [newPartPrice, setNewPartPrice] = useState("");
+  const [showQuotation, setShowQuotation] = useState(false);
+  const [quotationSubmitted, setQuotationSubmitted] = useState(false);
+  const [submitMsg, setSubmitMsg] = useState("");
 
   const total = currentParts.reduce((sum, p) => sum + (p.cost * (p.quantity || 1)), 0);
 
@@ -798,7 +808,10 @@ function PartsView({ job, onDone, setView }) {
   function resetToAI() { setCurrentParts((job.predictedParts || []).map(p => ({ ...p, quantity: 1, isPredicted: true }))); }
 
   async function handleQuotationSubmit(quotationData) {
-    await apiSubmitQuotation(quotationData);
+    const res = await apiSubmitQuotation(quotationData);
+    setSubmitMsg(res.message || "Quotation saved and submitted.");
+    // Transition status to AWAITING_PARTS so the manager sees it and UI updates
+    await updateJobStatus(job.id, "AWAITING_PARTS", "TECH-001", "Quotation submitted.");
     setQuotationSubmitted(true);
     await onDone();
   }
@@ -902,8 +915,12 @@ function PartsView({ job, onDone, setView }) {
               Generate Quotation & Get Customer Signature
             </button>
           ) : (
-            <div style={{ flex: 1, padding: "10px", background: "var(--brand)", color: "#fff", borderRadius: "8px", textAlign: "center", fontWeight: 600, fontSize: 13 }}>
-              ✓ Quotation Submitted — Awaiting Admin Approval
+            <div style={{ flex: 1, padding: "12px 16px", background: "var(--brand)", color: "#fff", borderRadius: "12px", textAlign: "center", fontWeight: 600, fontSize: 13 }}>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, marginBottom: 4 }}>
+                <Icon.check style={{ width: 16 }} />
+                <span>Quotation Submitted</span>
+              </div>
+              <div style={{ opacity: 0.9, fontWeight: 400, fontSize: 11, lineHeight: 1.4 }}>{submitMsg}</div>
             </div>
           )
         ) : (
@@ -924,20 +941,20 @@ function PartsView({ job, onDone, setView }) {
 //   ServiceReportSubmitView integration, freshJob reload fix, compensation code
 // ══════════════════════════════════════════════════════════════════════════════
 function CompleteJobView({ job, onDone, setView, onBack }) {
-  const [workNotes,       setWorkNotes]      = useState("");
-  const [phase,           setPhase]          = useState("input"); // input | review | completing | report | done
-  const [result,          setResult]         = useState(null);
+  const [workNotes, setWorkNotes] = useState("");
+  const [phase, setPhase] = useState("input"); // input | review | completing | report | done
+  const [result, setResult] = useState(null);
   const [reportSubmitted, setReportSubmitted] = useState(false);
-  const [freshJob,        setFreshJob]       = useState(null);
-  const [error,           setError]          = useState(null);
+  const [freshJob, setFreshJob] = useState(null);
+  const [error, setError] = useState(null);
 
   const partsUsed = job.predictedParts || [];
 
   async function finish() {
     setPhase("completing"); setError(null);
     try {
-      const partIds  = partsUsed.map(p => p.partId);
-      const res      = await apiCompleteJob(job.id, partIds, workNotes || "Service completed");
+      const partIds = partsUsed.map(p => p.partId);
+      const res = await apiCompleteJob(job.id, partIds, workNotes || "Service completed");
       setResult(res);
       await onDone();
       const reloaded = await fetchJobDetail(job.id);
@@ -1104,9 +1121,9 @@ function CompleteJobView({ job, onDone, setView, onBack }) {
 // — From v2: "Operations Watch" title merged as subtitle
 // ══════════════════════════════════════════════════════════════════════════════
 function EscalationPage() {
-  const [data,    setData]    = useState({ escalations: [], breachCount: 0, reminderCount: 0 });
+  const [data, setData] = useState({ escalations: [], breachCount: 0, reminderCount: 0 });
   const [loading, setLoading] = useState(true);
-  const [error,   setError]   = useState(null);
+  const [error, setError] = useState(null);
 
   const load = useCallback(async () => {
     setLoading(true); setError(null);
@@ -1118,11 +1135,11 @@ function EscalationPage() {
   useEffect(() => { load(); }, [load]);
 
   function EscItem({ e }) {
-    const isBreach  = e.type === "BREACH" || e.type === "SLA_BREACH";
+    const isBreach = e.type === "BREACH" || e.type === "SLA_BREACH";
     const isPending = e.type === "PENDING_APPROVAL";
-    const color     = isBreach ? "var(--accent)" : isPending ? "#7c3aed" : "var(--brand)";
-    const bg        = isBreach ? "var(--accent-light)" : isPending ? "#f3e8ff" : "var(--brand-light)";
-    const label     = isBreach ? "SLA BREACH" : isPending ? "PARTS PENDING" : "SLA WARNING";
+    const color = isBreach ? "var(--accent)" : isPending ? "#7c3aed" : "var(--brand)";
+    const bg = isBreach ? "var(--accent-light)" : isPending ? "#f3e8ff" : "var(--brand-light)";
+    const label = isBreach ? "SLA BREACH" : isPending ? "PARTS PENDING" : "SLA WARNING";
 
     return (
       <div className="card card-hover mb-16 animate-in" style={{ borderLeft: `4px solid ${color}`, display: "flex", gap: "20px", alignItems: "center" }}>
@@ -1145,7 +1162,7 @@ function EscalationPage() {
   }
 
   if (loading) return <Spinner message="Loading alerts..." />;
-  if (error)   return <ErrorBanner message={error} onRetry={load} />;
+  if (error) return <ErrorBanner message={error} onRetry={load} />;
 
   return (
     <div className="animate-in">
@@ -1181,14 +1198,14 @@ function EscalationPage() {
 // — From v1: MyRatings nav tab, footer
 // ══════════════════════════════════════════════════════════════════════════════
 export default function App() {
-  const [userRole,       setUserRole]       = useState(null); // 'technician' | 'admin' | null
-  const [jobs,           setJobs]           = useState([]);
-  const [stats,          setStats]          = useState({ total: 0, active: 0, breached: 0, completed: 0 });
-  const [selectedJobId,  setSelectedJobId]  = useState(null);
-  const [view,           setView]           = useState("jobs"); // jobs | alerts | ratings
-  const [loading,        setLoading]        = useState(false);
-  const [error,          setError]          = useState(null);
-  const [alertBadge,     setAlertBadge]     = useState(0);
+  const [userRole, setUserRole] = useState(null); // 'technician' | 'admin' | null
+  const [jobs, setJobs] = useState([]);
+  const [stats, setStats] = useState({ total: 0, active: 0, breached: 0, completed: 0 });
+  const [selectedJobId, setSelectedJobId] = useState(null);
+  const [view, setView] = useState("jobs"); // jobs | alerts | ratings
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+  const [alertBadge, setAlertBadge] = useState(0);
 
   // All hooks declared before any conditional returns (v2 fix)
   const loadJobs = useCallback(async () => {
@@ -1262,8 +1279,8 @@ export default function App() {
           </div>
 
           <nav style={{ display: "flex", gap: 32, marginLeft: 48, flex: 1 }}>
-            <NavBtn id="jobs"    label="My Jobs"    badge={0} />
-            <NavBtn id="alerts"  label="Alerts"     badge={alertBadge} />
+            <NavBtn id="jobs" label="My Jobs" badge={0} />
+            <NavBtn id="alerts" label="Alerts" badge={alertBadge} />
             <NavBtn id="ratings" label="My Ratings" badge={0} />
           </nav>
 
