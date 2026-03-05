@@ -34,21 +34,21 @@ async function apiFetch(path, options = {}) {
 
 function normalizeJob(j) {
     return {
-        id:             j.ticket_id,
-        customerName:   j.customer_name,
-        productModel:   j.product_name,
-        subject:        j.subject,
-        complaintType:  j.subject,
-        complaintText:  j.subject,
+        id: j.ticket_id,
+        customerName: j.customer_name,
+        productModel: j.product_name,
+        subject: j.subject,
+        complaintType: j.subject,
+        complaintText: j.subject,
         warrantyStatus: j.warranty_status,
-        urgencyLevel:   mapPriorityToUrgency(j.priority),
-        status:         mapStatus(j.status),
-        slaDeadlineAt:  j.sla_deadline,
-        createdAt:      j.created_at,
-        slaPercentage:  j.sla_percentage,
-        slaBreached:    j.sla_breached,
+        urgencyLevel: mapPriorityToUrgency(j.priority),
+        status: mapStatus(j.status),
+        slaDeadlineAt: j.sla_deadline,
+        createdAt: j.created_at,
+        slaPercentage: j.sla_percentage,
+        slaBreached: j.sla_breached,
         elapsedMinutes: j.elapsed_minutes,
-        slaLimitMinutes:j.sla_limit_minutes,
+        slaLimitMinutes: j.sla_limit_minutes,
         // detail-only fields (placeholder)
         address: "", serialNumber: "", faultType: null, faultNotes: null,
         predictedParts: [], partsApproved: false, completedAt: null, compensationCode: null,
@@ -57,56 +57,59 @@ function normalizeJob(j) {
 
 function normalizeJobDetail(d) {
     return {
-        id:              d.ticket_id,
-        orderId:         d.order_id,
-        customerName:    d.customer_name,
-        customerEmail:   d.customer_email,
-        productId:       d.product_id,
-        productModel:    d.product_name,
+        id: d.ticket_id,
+        orderId: d.order_id,
+        customerName: d.customer_name,
+        customerEmail: d.customer_email,
+        productId: d.product_id,
+        productModel: d.product_name,
         productCategory: d.product_category,
-        subject:         d.subject,
-        complaintType:   d.subject,
-        complaintText:   d.description,
-        warrantyStatus:  d.warranty_status,
-        chargeApplicable:d.charge_applicable,
-        urgencyLevel:    mapPriorityToUrgency(d.priority),
-        status:          mapStatus(d.status),
-        slaDeadlineAt:   d.sla_deadline,
-        createdAt:       d.created_at,
-        updatedAt:       d.updated_at,
-        slaPercentage:   d.sla_percentage,
-        slaBreached:     d.sla_breached,
-        elapsedMinutes:  d.elapsed_minutes,
+        subject: d.subject,
+        complaintType: d.subject,
+        complaintText: d.description,
+        warrantyStatus: d.warranty_status,
+        chargeApplicable: d.charge_applicable,
+        urgencyLevel: mapPriorityToUrgency(d.priority),
+        status: mapStatus(d.status),
+        slaDeadlineAt: d.sla_deadline,
+        createdAt: d.created_at,
+        updatedAt: d.updated_at,
+        slaPercentage: d.sla_percentage,
+        slaBreached: d.sla_breached,
+        elapsedMinutes: d.elapsed_minutes,
         slaLimitMinutes: d.sla_limit_minutes,
-        faultType:       d.fault_type,
-        faultNotes:      d.fault_notes,
-        predictedParts:  (d.predicted_parts || []).map(normalizePart),
-        partsApproved:   d.parts_approved || false,
-        completedAt:     d.completed_at,
-        compensationCode:d.compensation_code,
-        notes:           d.notes || [],
-        address:         "",
-        serialNumber:    d.product_id,
+        faultType: d.fault_type,
+        faultNotes: d.fault_notes,
+        predictedParts: (d.predicted_parts || []).map(normalizePart),
+        partsApproved: d.parts_approved || false,
+        completedAt: d.completed_at,
+        compensationCode: d.compensation_code,
+        notes: d.notes || [],
+        address: "",
+        serialNumber: d.product_id,
+        // Added for service report review
+        quotation: d.quotation || null,
+        report: d.report || null,
     };
 }
 
 function normalizePart(p) {
     return {
         partId: p.part_id,
-        name:   p.name,
-        stock:  (p.stock || "UNKNOWN").toUpperCase(),
-        cost:   p.cost || 0,
+        name: p.name,
+        stock: (p.stock || "UNKNOWN").toUpperCase(),
+        cost: p.cost || 0,
     };
 }
 
 function normalizeEscalation(e) {
     return {
-        id:           e.escalation_id,
-        ticketId:     e.ticket_id,
+        id: e.escalation_id,
+        ticketId: e.ticket_id,
         customerName: e.customer_name,
-        type:         e.type === "SLA_BREACH" ? "BREACH" : e.type,
-        message:      e.message,
-        triggeredAt:  e.triggered_at,
+        type: e.type === "SLA_BREACH" ? "BREACH" : e.type,
+        message: e.message,
+        triggeredAt: e.triggered_at,
     };
 }
 
@@ -123,6 +126,7 @@ function mapStatus(status) {
         "JOB_STARTED":    "JOB_STARTED",
         "ASSIGNED":       "ASSIGNED",
         "AWAITING_PARTS": "AWAITING_PARTS",
+        "PROCEED_JOB":    "PROCEED_JOB",
         "COMPLETED":      "COMPLETED",
         "CANCELLED":      "CANCELLED",
     }[status] || status;
@@ -134,10 +138,10 @@ function mapStatus(status) {
 export async function fetchJobs(techId = "TECH-001") {
     const data = await apiFetch(`/portal/jobs/${techId}`);
     return {
-        jobs:      (data.jobs || []).map(normalizeJob),
-        total:     data.total,
-        active:    data.active,
-        breached:  data.breached,
+        jobs: (data.jobs || []).map(normalizeJob),
+        total: data.total,
+        active: data.active,
+        breached: data.breached,
         completed: data.completed,
     };
 }
@@ -151,7 +155,7 @@ export async function fetchJobDetail(ticketId) {
 export async function updateJobStatus(ticketId, newStatus, updatedBy = "TECH-001", notes = null) {
     return apiFetch(`/portal/tickets/${ticketId}/status`, {
         method: "PATCH",
-        body:   JSON.stringify({ new_status: newStatus, updated_by: updatedBy, notes }),
+        body: JSON.stringify({ new_status: newStatus, updated_by: updatedBy, notes }),
     });
 }
 
@@ -159,14 +163,14 @@ export async function updateJobStatus(ticketId, newStatus, updatedBy = "TECH-001
 export async function logFault(ticketId, faultType, faultNotes = "") {
     const data = await apiFetch(`/portal/tickets/${ticketId}/fault`, {
         method: "POST",
-        body:   JSON.stringify({ fault_type: faultType, fault_notes: faultNotes }),
+        body: JSON.stringify({ fault_type: faultType, fault_notes: faultNotes }),
     });
     return {
-        ticketId:       data.ticket_id,
-        faultType:      data.fault_type,
+        ticketId: data.ticket_id,
+        faultType: data.fault_type,
         predictedParts: (data.predicted_parts || []).map(normalizePart),
-        partsApproved:  data.parts_approved,
-        totalCost:      data.total_cost,
+        partsApproved: data.parts_approved,
+        totalCost: data.total_cost,
         approvalReason: data.approval_reason,
     };
 }
@@ -182,15 +186,15 @@ export async function approveParts(ticketId, approved = true) {
 export async function completeJob(ticketId, actualPartsUsed = [], workDoneNotes = "Completed") {
     const data = await apiFetch(`/portal/tickets/${ticketId}/complete`, {
         method: "POST",
-        body:   JSON.stringify({ actual_parts_used: actualPartsUsed, work_done_notes: workDoneNotes }),
+        body: JSON.stringify({ actual_parts_used: actualPartsUsed, work_done_notes: workDoneNotes }),
     });
     return {
-        ticketId:         data.ticket_id,
-        status:           data.status,
-        completedAt:      data.completed_at,
-        slaBreached:      data.sla_breached,
+        ticketId: data.ticket_id,
+        status: data.status,
+        completedAt: data.completed_at,
+        slaBreached: data.sla_breached,
         compensationCode: data.compensation_code,
-        message:          data.message,
+        message: data.message,
     };
 }
 
@@ -198,8 +202,8 @@ export async function completeJob(ticketId, actualPartsUsed = [], workDoneNotes 
 export async function fetchEscalations() {
     const data = await apiFetch(`/portal/escalations`);
     return {
-        escalations:   (data.escalations || []).map(normalizeEscalation),
-        breachCount:   data.breach_count,
+        escalations: (data.escalations || []).map(normalizeEscalation),
+        breachCount: data.breach_count,
         reminderCount: data.reminder_count,
     };
 }
@@ -214,18 +218,18 @@ export async function fetchPendingApprovals() {
     const d = await apiFetch("/portal/pending-approvals");
     return {
         approvals: (d.pending_approvals || []).map(a => ({
-            ticketId:       a.ticket_id,
-            customerName:   a.customer_name,
-            subject:        a.subject,
-            faultType:      a.fault_type,
+            ticketId: a.ticket_id,
+            customerName: a.customer_name,
+            subject: a.subject,
+            faultType: a.fault_type,
             warrantyStatus: a.warranty_status,
-            totalCost:      a.total_cost,
-            createdAt:      a.created_at,
+            totalCost: a.total_cost,
+            createdAt: a.created_at,
             predictedParts: (a.predicted_parts || []).map(p => ({
                 partId: p.part_id,
-                name:   p.name,
-                stock:  (p.stock || "UNKNOWN").toUpperCase(),
-                cost:   p.cost || 0,
+                name: p.name,
+                stock: (p.stock || "UNKNOWN").toUpperCase(),
+                cost: p.cost || 0,
             })),
         })),
         count: d.count,
@@ -260,21 +264,84 @@ export async function submitQuotation(quotationData) {
 
 // Admin — all feedback + technician ratings
 export async function getAdminFeedback() {
-  const res = await fetch(`${API_BASE}/admin/feedback`);
-  if (!res.ok) throw new Error("Failed to fetch feedback");
-  return res.json();
+    const res = await fetch(`${API_BASE}/admin/feedback`);
+    if (!res.ok) throw new Error("Failed to fetch feedback");
+    return res.json();
 }
 
 // Admin — parts analytics chart data
 export async function getPartsAnalytics() {
-  const res = await fetch(`${API_BASE}/admin/parts-analytics`);
-  if (!res.ok) throw new Error("Failed to fetch parts analytics");
-  return res.json();
+    const res = await fetch(`${API_BASE}/admin/parts-analytics`);
+    if (!res.ok) throw new Error("Failed to fetch parts analytics");
+    return res.json();
 }
 
 // Technician — their own ratings only
 export async function getTechFeedback(techId) {
-  const res = await fetch(`${API_BASE}/portal/technician/${techId}/feedback`);
-  if (!res.ok) throw new Error("Failed to fetch technician feedback");
-  return res.json();
+    const res = await fetch(`${API_BASE}/portal/technician/${techId}/feedback`);
+    if (!res.ok) throw new Error("Failed to fetch technician feedback");
+    return res.json();
+}
+
+/**
+ * Submit a technician service report after job completion.
+ * Saves the report under the ticket and notifies admin to close the job.
+ *
+ * @param {string} ticketId
+ * @param {Object} reportData - { techId, faultType, faultNotes, workDoneNotes,
+ *                               partsUsed, totalPartsCost, completedAt, signature }
+ */
+export async function submitServiceReport(ticketId, reportData) {
+    return apiFetch(`/portal/tickets/${ticketId}/service-report`, {
+        method: "POST",
+        body: JSON.stringify({
+            tech_id:           reportData.techId,
+            fault_type:        reportData.faultType,
+            fault_notes:       reportData.faultNotes,
+            work_done_notes:   reportData.workDoneNotes,
+            parts_used:        reportData.partsUsed,
+            total_parts_cost:  reportData.totalPartsCost,
+            completed_at:      reportData.completedAt,
+            tech_signature:    reportData.signature,
+        }),
+    });
+}
+
+/**
+ * Fetch all archived documents (quotation + service report) for a ticket.
+ * Used by the review panel in both the technician detail page and admin dashboard.
+ *
+ * @param {string} ticketId
+ * @returns {{ quotation: Object|null, serviceReport: Object|null }}
+ */
+export async function fetchTicketDocuments(ticketId) {
+    const data = await apiFetch(`/portal/tickets/${ticketId}/documents`);
+    return {
+        quotation: data.quotation
+            ? {
+                ticketId:    data.quotation.ticket_id,
+                customerName: data.quotation.customer_name,
+                customerEmail: data.quotation.customer_email,
+                parts:       data.quotation.parts || [],
+                totalAmount: data.quotation.total_amount,
+                signature:   data.quotation.signature,
+                createdAt:   data.quotation.created_at,
+                emailSentAt: data.quotation.email_sent_at,
+            }
+            : null,
+        serviceReport: data.service_report
+            ? {
+                ticketId:       data.service_report.ticket_id,
+                techId:         data.service_report.tech_id,
+                faultType:      data.service_report.fault_type,
+                faultNotes:     data.service_report.fault_notes,
+                workDoneNotes:  data.service_report.work_done_notes,
+                partsUsed:      data.service_report.parts_used || [],
+                totalPartsCost: data.service_report.total_parts_cost,
+                completedAt:    data.service_report.completed_at,
+                techSignature:  data.service_report.tech_signature,
+                submittedAt:    data.service_report.submitted_at,
+            }
+            : null,
+    };
 }

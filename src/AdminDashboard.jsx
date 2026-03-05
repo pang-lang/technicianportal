@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { getAdminFeedback, getPartsAnalytics, fetchPendingApprovals, approveOrRejectParts } from "./api";
+import { TicketDocumentsReview } from "./ServiceReportSubmit";
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -79,6 +80,7 @@ const Icon = {
   refresh: () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 14, height: 14 }}><polyline points="23 4 23 10 17 10" /><polyline points="1 20 1 14 7 14" /><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" /></svg>,
   mail:    () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 14, height: 14 }}><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" /><polyline points="22,6 12,13 2,6" /></svg>,
   check:   () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ width: 16, height: 16 }}><polyline points="20 6 9 17 4 12" /></svg>,
+  back:    () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 16, height: 16 }}><polyline points="15 18 9 12 15 6" /></svg>,
 };
 
 // ── Stock Config ─────────────────────────────────────────────────────────────
@@ -102,11 +104,11 @@ function Divider({ label }) {
 
 // ── Parts Approval Tab Component ─────────────────────────────────────────────
 function PartsApprovalTab() {
-  const [data, setData]       = useState(null);
+  const [data,    setData]    = useState(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError]     = useState(null);
-  const [acting, setActing]   = useState({});
-  const [toasts, setToasts]   = useState([]);
+  const [error,   setError]   = useState(null);
+  const [acting,  setActing]  = useState({});
+  const [toasts,  setToasts]  = useState([]);
 
   const addToast = (msg, ok = true) => {
     const id = Date.now();
@@ -148,7 +150,7 @@ function PartsApprovalTab() {
       <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
     </div>
   );
-  
+
   if (error) return (
     <div className="card animate-in" style={{ background: "var(--accent-light)", border: "1px solid rgba(224,92,42,0.2)", padding: "20px" }}>
       <div style={{ fontWeight: 700, color: "var(--accent)", marginBottom: 8 }}>Something went wrong</div>
@@ -156,7 +158,7 @@ function PartsApprovalTab() {
       <button className="btn btn-outline" onClick={load}>Retry</button>
     </div>
   );
-  
+
   if (!data) return null;
 
   const { approvals } = data;
@@ -165,6 +167,26 @@ function PartsApprovalTab() {
     const isActing   = !!acting[a.ticketId];
     const warrantyOk = a.warrantyStatus === "UNDER_WARRANTY";
     const costHigh   = a.totalCost > 500;
+
+    // ── Reason banner logic ──
+    // v1: always shows a billing note line + "all requests require manual auth"
+    // v2: 3-way conditional (no warranty / high cost / safe)
+    // Merged: use v2's 3-way logic for the primary message, append v1's
+    // "manual authorization required" note for full clarity.
+    let bannerBg, bannerColor, bannerMsg;
+    if (!warrantyOk) {
+      bannerBg    = "var(--accent-light)";
+      bannerColor = "var(--accent)";
+      bannerMsg   = `⚠️ Warranty expired — customer will be billed RM ${a.totalCost.toFixed(2)} for parts and labour.`;
+    } else if (costHigh) {
+      bannerBg    = "var(--accent-light)";
+      bannerColor = "var(--accent)";
+      bannerMsg   = `⚠️ Cost RM ${a.totalCost.toFixed(2)} exceeds RM 500 auto-approval limit.`;
+    } else {
+      bannerBg    = "var(--brand-light)";
+      bannerColor = "var(--brand)";
+      bannerMsg   = `✅ Under warranty and within cost limit — safe to approve at no charge to customer.`;
+    }
 
     return (
       <div className="card mb-16 animate-in" style={{ borderLeft: `4px solid ${!warrantyOk || costHigh ? "var(--accent)" : "var(--brand)"}` }}>
@@ -208,8 +230,13 @@ function PartsApprovalTab() {
                 const stock = STOCK_CFG[p.stock] || STOCK_CFG.UNKNOWN;
                 return (
                   <tr key={i} style={{ borderTop: "1px solid var(--border)" }}>
-                    <td style={{ padding: "10px 14px" }}><div style={{ fontWeight: 600 }}>{p.name}</div><div className="mono" style={{ fontSize: 11, color: "var(--text-muted)" }}>{p.partId}</div></td>
-                    <td style={{ padding: "10px 14px" }}><span className="badge" style={{ color: stock.color, background: stock.bg, fontSize: 10 }}>{stock.label}</span></td>
+                    <td style={{ padding: "10px 14px" }}>
+                      <div style={{ fontWeight: 600 }}>{p.name}</div>
+                      <div className="mono" style={{ fontSize: 11, color: "var(--text-muted)" }}>{p.partId}</div>
+                    </td>
+                    <td style={{ padding: "10px 14px" }}>
+                      <span className="badge" style={{ color: stock.color, background: stock.bg, fontSize: 10 }}>{stock.label}</span>
+                    </td>
                     <td style={{ padding: "10px 14px", textAlign: "right", fontWeight: 600 }}>RM {Number(p.cost || 0).toFixed(2)}</td>
                   </tr>
                 );
@@ -218,13 +245,12 @@ function PartsApprovalTab() {
           </table>
         </div>
 
-        {/* Reason banner */}
-        <div style={{ padding: "10px 14px", borderRadius: 8, marginBottom: 16, fontSize: 12,
-          background: warrantyOk && !costHigh ? "var(--brand-light)"  : "var(--accent-light)",
-          color:      warrantyOk && !costHigh ? "var(--brand)"        : "var(--accent)" }}>
-          {!warrantyOk                    && "⚠️ Warranty expired — repair cost not covered."}
-          {warrantyOk && costHigh         && `⚠️ Cost RM ${a.totalCost.toFixed(2)} exceeds RM 500 auto-approval limit.`}
-          {warrantyOk && !costHigh        && "✅ Under warranty and within cost limit — safe to approve."}
+        {/* Reason banner — merged: 3-way logic (v2) + manual auth note (v1) */}
+        <div style={{ padding: "10px 14px", borderRadius: 8, marginBottom: 16, fontSize: 12, background: bannerBg, color: bannerColor }}>
+          {bannerMsg}
+          <span style={{ display: "block", marginTop: 4, opacity: 0.75 }}>
+            All parts requests require manual manager authorization.
+          </span>
         </div>
 
         {/* Email note */}
@@ -287,18 +313,125 @@ function PartsApprovalTab() {
   );
 }
 
+
+// ── Service Reports Tab ───────────────────────────────────────────────────────
+// From v1 — not present in v2, added in full.
+// Lets admin search by ticket ID and view the archived quotation + service report.
+function ServiceReportsTab() {
+  const [ticketInput,    setTicketInput]    = useState("");
+  const [activeTicketId, setActiveTicketId] = useState(null);
+
+  function handleSearch() {
+    const trimmed = ticketInput.trim();
+    if (trimmed) setActiveTicketId(trimmed);
+  }
+
+  function handleKeyDown(e) {
+    if (e.key === "Enter") handleSearch();
+  }
+
+  return (
+    <div className="animate-in">
+      <div style={{ marginBottom: 24 }}>
+        <h1 className="display-font" style={{ fontSize: 32, marginBottom: 4 }}>Service Reports</h1>
+        <p style={{ color: "var(--text-secondary)" }}>
+          Review archived technician service reports and customer quotations by ticket ID.
+        </p>
+      </div>
+
+      {/* Ticket ID search */}
+      <div className="card mb-24">
+        <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 12, color: "var(--text-primary)" }}>
+          Look Up Ticket Documents
+        </div>
+        <div style={{ display: "flex", gap: 12 }}>
+          <input
+            className="form-control"
+            style={{ flex: 1 }}
+            placeholder="Enter Ticket ID (e.g. TKT-001234)"
+            value={ticketInput}
+            onChange={e => setTicketInput(e.target.value)}
+            onKeyDown={handleKeyDown}
+          />
+          <button
+            className="btn btn-primary"
+            onClick={handleSearch}
+            disabled={!ticketInput.trim()}
+            style={{ whiteSpace: "nowrap" }}
+          >
+            View Documents
+          </button>
+          {activeTicketId && (
+            <button
+              className="btn btn-outline"
+              onClick={() => { setActiveTicketId(null); setTicketInput(""); }}
+            >
+              Clear
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* Documents panel */}
+      {activeTicketId ? (
+        <div className="card">
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
+            <div>
+              <div style={{ fontSize: 11, fontWeight: 800, letterSpacing: "0.1em", color: "var(--text-muted)", textTransform: "uppercase", marginBottom: 2 }}>
+                Ticket
+              </div>
+              <div className="mono" style={{ fontSize: 18, fontWeight: 700, color: "var(--brand)" }}>
+                {activeTicketId}
+              </div>
+            </div>
+            <button
+              className="btn btn-outline"
+              style={{ display: "flex", alignItems: "center", gap: 6, padding: "6px 12px", fontSize: 12 }}
+              onClick={() => setActiveTicketId(activeTicketId + " ")} // force re-render
+            >
+              <Icon.refresh /> Reload
+            </button>
+          </div>
+          <TicketDocumentsReview ticketId={activeTicketId} />
+        </div>
+      ) : (
+        <div style={{
+          padding: "48px 24px",
+          textAlign: "center",
+          background: "var(--bg-subtle)",
+          borderRadius: 16,
+          border: "1px dashed var(--border)",
+        }}>
+          <div style={{ fontSize: 40, marginBottom: 12 }}>📋</div>
+          <div style={{ fontSize: 15, fontWeight: 600, color: "var(--text-secondary)", marginBottom: 8 }}>
+            Enter a Ticket ID to view its documents
+          </div>
+          <p style={{ fontSize: 13, color: "var(--text-muted)", maxWidth: 360, margin: "0 auto" }}>
+            Once a technician submits a service report or quotation, they will appear here for review and job closure.
+          </p>
+        </div>
+      )}
+    </div>
+  );
+}
+
+
 // ── Main Component ────────────────────────────────────────────────────────────
+// — onLogout prop from v2 (wired to Logout button instead of window.location.href)
+// — ServiceReportsTab from v1 added back to nav + tab loading logic
+// — "reports" tab added to the loading skip list (from v1)
 
 export default function AdminDashboard({ onLogout }) {
-  const [tab, setTab] = useState("approvals");
+  const [tab,          setTab]          = useState("approvals");
   const [feedbackData, setFeedbackData] = useState(null);
-  const [partsData, setPartsData] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const [partsData,    setPartsData]    = useState(null);
+  const [loading,      setLoading]      = useState(true);
+  const [error,        setError]        = useState(null);
 
   useEffect(() => {
     async function load() {
-      if (tab === "approvals") {
+      // approvals and reports tabs manage their own data fetching internally
+      if (tab === "approvals" || tab === "reports") {
         setLoading(false);
         return;
       }
@@ -352,33 +485,6 @@ export default function AdminDashboard({ onLogout }) {
       gap: 10,
       cursor: "pointer",
     },
-    navLogoIcon: {
-      width: 36,
-      height: 36,
-      background: "var(--brand)",
-      borderRadius: 10,
-      display: "flex",
-      alignItems: "center",
-      justifyContent: "center",
-      color: "#fff",
-      flexShrink: 0,
-    },
-    navLogoText: {
-      fontFamily: "'Fraunces', serif",
-      fontSize: 20,
-      fontWeight: 700,
-      color: "var(--text-primary)",
-      letterSpacing: "-0.02em",
-    },
-    adminBadge: {
-      background: "var(--accent-light)",
-      color: "var(--accent)",
-      fontSize: "0.7rem",
-      fontWeight: 700,
-      padding: "2px 8px",
-      borderRadius: 99,
-      marginLeft: 8,
-    },
     navTab: (active) => ({
       background: "none",
       border: "none",
@@ -400,11 +506,11 @@ export default function AdminDashboard({ onLogout }) {
       padding: "32px 24px",
       width: "100%",
     },
-    heading: { fontSize: "1.6rem", fontWeight: 800, color: "var(--text-primary)", marginBottom: 4, fontFamily: "'Fraunces', serif" },
+    heading:    { fontSize: "1.6rem", fontWeight: 800, color: "var(--text-primary)", marginBottom: 4, fontFamily: "'Fraunces', serif" },
     subheading: { fontSize: "0.9rem", color: "var(--text-secondary)", marginBottom: 28 },
-    statsRow: { display: "flex", gap: 16, marginBottom: 32, flexWrap: "wrap" },
-    cardTitle: { fontSize: "1rem", fontWeight: 700, color: "var(--text-primary)", marginBottom: 20 },
-    table: { width: "100%", borderCollapse: "collapse" },
+    statsRow:   { display: "flex", gap: 16, marginBottom: 32, flexWrap: "wrap" },
+    cardTitle:  { fontSize: "1rem", fontWeight: 700, color: "var(--text-primary)", marginBottom: 20 },
+    table:      { width: "100%", borderCollapse: "collapse" },
     th: {
       textAlign: "left", fontSize: "0.72rem", fontWeight: 700,
       color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.08em",
@@ -413,12 +519,6 @@ export default function AdminDashboard({ onLogout }) {
     td: {
       padding: "14px 12px", fontSize: "0.85rem", color: "var(--text-secondary)",
       borderBottom: "1px solid var(--bg-subtle)", verticalAlign: "top"
-    },
-    footer: {
-      marginTop: 60,
-      padding: "40px 0",
-      borderTop: "1px solid var(--border)",
-      textAlign: "center",
     },
   };
 
@@ -444,15 +544,13 @@ export default function AdminDashboard({ onLogout }) {
     </div>
   );
 
-  const fb = feedbackData || {};
-  const parts = partsData || {};
+  const fb    = feedbackData || {};
+  const parts = partsData    || {};
 
-  function NavBtn({ id, label, active }) {
+  function NavBtn({ id, label }) {
+    const active = tab === id;
     return (
-      <button
-        onClick={() => setTab(id)}
-        style={styles.navTab(active)}
-      >
+      <button onClick={() => setTab(id)} style={styles.navTab(active)}>
         {label}
       </button>
     );
@@ -467,16 +565,19 @@ export default function AdminDashboard({ onLogout }) {
             <img src="/fiamma_logo.png" alt="Fiamma" style={{ height: 36 }} />
           </div>
 
+          {/* 4 tabs — approvals + reports from v1, parts + feedback present in both */}
           <nav style={{ display: "flex", gap: 32, marginLeft: 48, flex: 1 }}>
-            <NavBtn id="approvals" label="Parts Approval" active={tab === "approvals"} />
-            <NavBtn id="parts" label="Parts Analytics" active={tab === "parts"} />
-            <NavBtn id="feedback" label="Customer Feedback" active={tab === "feedback"} />
+            <NavBtn id="approvals" label="Parts Approval"    />
+            <NavBtn id="reports"   label="Service Reports"   />
+            <NavBtn id="parts"     label="Parts Analytics"   />
+            <NavBtn id="feedback"  label="Customer Feedback" />
           </nav>
 
           <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
             <div className="badge" style={{ background: "var(--brand-light)", color: "var(--brand)", textTransform: "none", borderRadius: 8 }}>
               <span style={{ opacity: 0.6, marginRight: 4 }}>ID:</span> ADMIN
             </div>
+            {/* onLogout from v2 — proper prop instead of window.location.href */}
             <button className="btn btn-outline" style={{ padding: "6px 12px", fontSize: 12 }} onClick={onLogout}>
               Logout
             </button>
@@ -487,7 +588,17 @@ export default function AdminDashboard({ onLogout }) {
       <main style={styles.main}>
 
         {/* ════════════════════════════════════════════
-            TAB 1 — CUSTOMER FEEDBACK
+            TAB: PARTS APPROVAL
+        ════════════════════════════════════════════ */}
+        {tab === "approvals" && <PartsApprovalTab />}
+
+        {/* ════════════════════════════════════════════
+            TAB: SERVICE REPORTS (from v1)
+        ════════════════════════════════════════════ */}
+        {tab === "reports" && <ServiceReportsTab />}
+
+        {/* ════════════════════════════════════════════
+            TAB: CUSTOMER FEEDBACK
         ════════════════════════════════════════════ */}
         {tab === "feedback" && (
           <>
@@ -496,29 +607,10 @@ export default function AdminDashboard({ onLogout }) {
 
             {/* Stats */}
             <div style={styles.statsRow}>
-              <StatCard
-                label="Total Reviews"
-                value={fb.total_feedback || 0}
-                sub="All time"
-              />
-              <StatCard
-                label="Average Rating"
-                value={`${fb.average_rating || 0} ★`}
-                sub="Across all tickets"
-                accent="var(--accent)"
-              />
-              <StatCard
-                label="Technicians Reviewed"
-                value={fb.technician_summary?.length || 0}
-                sub="With at least 1 review"
-                accent="var(--brand)"
-              />
-              <StatCard
-                label="5-Star Reviews"
-                value={fb.feedbacks?.filter(f => f.rating === 5).length || 0}
-                sub="Perfect scores"
-                accent="var(--brand)"
-              />
+              <StatCard label="Total Reviews"        value={fb.total_feedback || 0}                                sub="All time" />
+              <StatCard label="Average Rating"       value={`${fb.average_rating || 0} ★`}                         sub="Across all tickets"       accent="var(--accent)" />
+              <StatCard label="Technicians Reviewed" value={fb.technician_summary?.length || 0}                    sub="With at least 1 review"   accent="var(--brand)" />
+              <StatCard label="5-Star Reviews"       value={fb.feedbacks?.filter(f => f.rating === 5).length || 0} sub="Perfect scores"            accent="var(--brand)" />
             </div>
 
             {/* Technician Leaderboard */}
@@ -621,7 +713,7 @@ export default function AdminDashboard({ onLogout }) {
         )}
 
         {/* ════════════════════════════════════════════
-            TAB 2 — PARTS ANALYTICS
+            TAB: PARTS ANALYTICS
         ════════════════════════════════════════════ */}
         {tab === "parts" && (
           <>
@@ -630,10 +722,10 @@ export default function AdminDashboard({ onLogout }) {
 
             {/* Stats */}
             <div style={styles.statsRow}>
-              <StatCard label="Total Requests" value={parts.total_requests || 0} sub="All time" />
-              <StatCard label="Approved" value={parts.approved_count || 0} sub="Parts approved" accent="var(--brand)" />
-              <StatCard label="Pending" value={parts.pending_count || 0} sub="Awaiting approval" accent="var(--accent)" />
-              <StatCard label="Rejected" value={parts.rejected_count || 0} sub="Rejected requests" accent="var(--accent)" />
+              <StatCard label="Total Requests" value={parts.total_requests || 0}  sub="All time" />
+              <StatCard label="Approved"        value={parts.approved_count || 0}  sub="Parts approved"    accent="var(--brand)" />
+              <StatCard label="Pending"         value={parts.pending_count || 0}   sub="Awaiting approval" accent="var(--accent)" />
+              <StatCard label="Rejected"        value={parts.rejected_count || 0}  sub="Rejected requests" accent="var(--accent)" />
             </div>
 
             {/* Bar Chart */}
@@ -682,11 +774,6 @@ export default function AdminDashboard({ onLogout }) {
             </div>
           </>
         )}
-
-        {/* ════════════════════════════════════════════
-            TAB 3 — PARTS APPROVAL
-        ════════════════════════════════════════════ */}
-        {tab === "approvals" && <PartsApprovalTab />}
 
       </main>
 
