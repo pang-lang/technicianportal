@@ -11,6 +11,7 @@ import {
   completeJob as apiCompleteJob,
   fetchEscalations,
   submitQuotation as apiSubmitQuotation,
+  submitServiceReport,
 } from "./api";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -178,6 +179,7 @@ function LoginPage({ onLogin }) {
 function MyJobsPage({ jobs, stats, loading, error, onSelectJob, onRetry }) {
   const active = jobs.filter(j => j.status !== "COMPLETED" && j.status !== "CANCELLED");
   const done = jobs.filter(j => j.status === "COMPLETED");
+  const cancelled = jobs.filter(j => j.status === "CANCELLED");
 
   function JobItem({ job }) {
     const urg = URGENCY_CFG[job.urgencyLevel] || URGENCY_CFG.STANDARD;
@@ -262,6 +264,14 @@ function MyJobsPage({ jobs, stats, loading, error, onSelectJob, onRetry }) {
         <>
           <Divider label="Completed" />
           {done.map(j => <JobItem key={j.id} job={j} />)}
+        </>
+      )}
+      {cancelled.length > 0 && (
+        <>
+          <Divider label="Cancelled" />
+          <div style={{ opacity: 0.75 }}>
+            {cancelled.map(j => <JobItem key={j.id} job={j} />)}
+          </div>
         </>
       )}
     </div>
@@ -438,7 +448,7 @@ function JobDetailPage({ jobId, onBack, onJobMutated }) {
               <div style={{ padding: "16px 20px", background: "#e0f7fa", borderRadius: "12px", border: "1px solid #b2ebf2", marginBottom: 16 }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
                   <div style={{ width: 32, height: 32, background: "#0891b2", color: "#fff", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                    <Icon.check style={{ width: 16 }} />
+                    <Icon.check style={{ width: 5, height: 5 }} />
                   </div>
                   <div style={{ fontWeight: 700, color: "#0891b2", fontSize: 15 }}>Parts Approved — Ready to Proceed</div>
                 </div>
@@ -791,6 +801,7 @@ function PartsView({ job, onDone, setView }) {
   const [showQuotation, setShowQuotation] = useState(false);
   const [quotationSubmitted, setQuotationSubmitted] = useState(false);
   const [submitMsg, setSubmitMsg] = useState("");
+  const isReadOnly = job.status === "AWAITING_PARTS" || job.status === "PROCEED_JOB" || job.status === "COMPLETED";
 
   const total = currentParts.reduce((sum, p) => sum + (p.cost * (p.quantity || 1)), 0);
 
@@ -809,11 +820,11 @@ function PartsView({ job, onDone, setView }) {
 
   async function handleQuotationSubmit(quotationData) {
     const res = await apiSubmitQuotation(quotationData);
-    setSubmitMsg(res.message || "Quotation saved and submitted.");
-    // Transition status to AWAITING_PARTS so the manager sees it and UI updates
+    // Transition status to AWAITING_PARTS so manager sees it
     await updateJobStatus(job.id, "AWAITING_PARTS", "TECH-001", "Quotation submitted.");
-    setQuotationSubmitted(true);
     await onDone();
+    // Navigate directly to detail view — job.status will now be AWAITING_PARTS
+    setView("detail");
   }
 
   if (showQuotation) {
@@ -831,9 +842,11 @@ function PartsView({ job, onDone, setView }) {
     <div className="animate-in" style={{ marginTop: 24 }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
         <h3 className="display-font" style={{ fontSize: 20 }}>Quotation Items</h3>
-        <button className="btn btn-outline" style={{ padding: "4px 10px", fontSize: 11 }} onClick={resetToAI}>
-          <Icon.refresh style={{ width: 12, marginRight: 4 }} /> Reset to AI Predictions
-        </button>
+        {!isReadOnly && (
+          <button className="btn btn-outline" style={{ padding: "4px 10px", fontSize: 11 }} onClick={resetToAI}>
+            <Icon.refresh style={{ width: 12, marginRight: 4 }} /> Reset to AI Predictions
+          </button>
+        )}
       </div>
 
       <div className="card mb-16">
@@ -844,8 +857,8 @@ function PartsView({ job, onDone, setView }) {
                 <th style={{ padding: "12px 16px", fontWeight: 700, fontSize: 12, color: "var(--text-secondary)" }}>PART NAME</th>
                 <th style={{ padding: "12px 16px", fontWeight: 700, fontSize: 12, color: "var(--text-secondary)" }}>STOCK</th>
                 <th style={{ padding: "12px 16px", fontWeight: 700, fontSize: 12, color: "var(--text-secondary)", textAlign: "center", width: 80 }}>QTY</th>
-                <th style={{ padding: "12px 16px", fontWeight: 700, fontSize: 12, color: "var(--text-secondary)", textAlign: "right" }}>TOTAL COST</th>
-                <th style={{ padding: "12px 16px", width: 40 }}></th>
+                <th style={{ padding: "12px 16px", fontWeight: 700, fontSize: 12, color: "var(--text-secondary)", textAlign: "right" }}>COST (RM)</th>
+                {!isReadOnly && <th style={{ padding: "12px 16px", width: 40 }}></th>}
               </tr>
             </thead>
             <tbody>
@@ -867,15 +880,21 @@ function PartsView({ job, onDone, setView }) {
                         <span className="badge" style={{ color: stock.color, background: stock.bg, fontSize: 10 }}>{stock.label}</span>
                       </td>
                       <td style={{ padding: "12px 16px", textAlign: "center" }}>
-                        <input type="number" min="1" value={p.quantity || 1}
-                          onChange={e => updateQuantity(p.partId, e.target.value)}
-                          style={{ width: 50, textAlign: "center", padding: "4px", border: "1px solid var(--border)", borderRadius: 6, fontSize: 13 }}
-                        />
+                        {isReadOnly ? (
+                          <span style={{ fontWeight: 600 }}>{p.quantity || 1}</span>
+                        ) : (
+                          <input type="number" min="1" value={p.quantity || 1}
+                            onChange={e => updateQuantity(p.partId, e.target.value)}
+                            style={{ width: 50, textAlign: "center", padding: "4px", border: "1px solid var(--border)", borderRadius: 6, fontSize: 13 }}
+                          />
+                        )}
                       </td>
-                      <td style={{ padding: "12px 16px", textAlign: "right", fontWeight: 600 }}>RM {(p.cost * (p.quantity || 1)).toFixed(2)}</td>
-                      <td style={{ padding: "12px 16px", textAlign: "center" }}>
-                        <button onClick={() => removePart(p.partId)} style={{ background: "none", border: "none", color: "var(--accent)", cursor: "pointer", fontSize: 16 }}>✕</button>
-                      </td>
+                      <td style={{ padding: "12px 16px", textAlign: "right", fontWeight: 600 }}> {(p.cost * (p.quantity || 1)).toFixed(2)}</td>
+                      {!isReadOnly && (
+                        <td style={{ padding: "12px 16px", textAlign: "center" }}>
+                          <button onClick={() => removePart(p.partId)} style={{ background: "none", border: "none", color: "var(--accent)", cursor: "pointer", fontSize: 16 }}>✕</button>
+                        </td>
+                      )}
                     </tr>
                   );
                 })
@@ -884,8 +903,8 @@ function PartsView({ job, onDone, setView }) {
             <tfoot>
               <tr style={{ background: "var(--bg-subtle)", borderTop: "1px solid var(--border)" }}>
                 <td colSpan="3" style={{ padding: "12px 16px", fontWeight: 700, textAlign: "right" }}>Total Estimated Cost</td>
-                <td style={{ padding: "12px 16px", textAlign: "right", fontWeight: 800, color: "var(--brand)", fontSize: 16 }}>RM {total.toFixed(2)}</td>
-                <td></td>
+                <td style={{ padding: "12px 16px", textAlign: "right", fontWeight: 800, color: "var(--brand)", fontSize: 16 }}> {total.toFixed(2)}</td>
+                {!isReadOnly && <td></td>}
               </tr>
             </tfoot>
           </table>
@@ -893,36 +912,37 @@ function PartsView({ job, onDone, setView }) {
       </div>
 
       {/* Add manual part */}
-      <div className="card mb-20" style={{ borderStyle: "dashed", background: "var(--bg-subtle)" }}>
-        <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 16 }}>Add Additional Spare Part</div>
-        <div style={{ display: "flex", gap: 12, alignItems: "flex-end" }}>
-          <div className="form-group" style={{ flex: 2, marginBottom: 0 }}>
-            <label className="form-label">Part Name</label>
-            <input className="form-control" placeholder="e.g. Copper Pipe" value={newPartName} onChange={e => setNewPartName(e.target.value)} />
+      {!isReadOnly && (
+        <div className="card mb-20" style={{ borderStyle: "dashed", background: "var(--bg-subtle)" }}>
+          <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 16 }}>Add Additional Spare Part</div>
+          <div style={{ display: "flex", gap: 12, alignItems: "flex-end" }}>
+            <div className="form-group" style={{ flex: 2, marginBottom: 0 }}>
+              <label className="form-label">Part Name</label>
+              <input className="form-control" placeholder="e.g. Copper Pipe" value={newPartName} onChange={e => setNewPartName(e.target.value)} />
+            </div>
+            <div className="form-group" style={{ flex: 1, marginBottom: 0 }}>
+              <label className="form-label">Unit Price (RM)</label>
+              <input className="form-control" type="number" placeholder="0.00" value={newPartPrice} onChange={e => setNewPartPrice(e.target.value)} />
+            </div>
+            <button className="btn btn-primary" onClick={addPart} disabled={!newPartName || !newPartPrice} style={{ height: 42 }}>Add Item</button>
           </div>
-          <div className="form-group" style={{ flex: 1, marginBottom: 0 }}>
-            <label className="form-label">Unit Price (RM)</label>
-            <input className="form-control" type="number" placeholder="0.00" value={newPartPrice} onChange={e => setNewPartPrice(e.target.value)} />
-          </div>
-          <button className="btn btn-primary" onClick={addPart} disabled={!newPartName || !newPartPrice} style={{ height: 42 }}>Add Item</button>
         </div>
-      </div>
+      )}
 
       <div style={{ display: "flex", gap: 12 }}>
-        {job.chargeApplicable ? (
-          !quotationSubmitted ? (
-            <button className="btn btn-primary" style={{ flex: 1 }} onClick={() => setShowQuotation(true)} disabled={currentParts.length === 0}>
-              Generate Quotation & Get Customer Signature
-            </button>
-          ) : (
-            <div style={{ flex: 1, padding: "12px 16px", background: "var(--brand)", color: "#fff", borderRadius: "12px", textAlign: "center", fontWeight: 600, fontSize: 13 }}>
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, marginBottom: 4 }}>
-                <Icon.check style={{ width: 16 }} />
-                <span>Quotation Submitted</span>
-              </div>
-              <div style={{ opacity: 0.9, fontWeight: 400, fontSize: 11, lineHeight: 1.4 }}>{submitMsg}</div>
-            </div>
-          )
+        {/* Hide quotation button once approval is in progress or already approved */}
+        {job.chargeApplicable && job.status !== "AWAITING_PARTS" && job.status !== "PROCEED_JOB" && job.status !== "COMPLETED" ? (
+          <button className="btn btn-primary" style={{ flex: 1 }} onClick={() => setShowQuotation(true)} disabled={currentParts.length === 0}>
+            Generate Quotation & Get Customer Signature
+          </button>
+        ) : job.status === "AWAITING_PARTS" ? (
+          <div style={{ flex: 1, padding: "12px 16px", background: "#f3e8ff", color: "#7c3aed", borderRadius: "12px", textAlign: "center", fontWeight: 600, fontSize: 13 }}>
+            ⏳ Awaiting manager parts approval
+          </div>
+        ) : job.status === "PROCEED_JOB" || job.status === "COMPLETED" ? (
+          <div style={{ flex: 1, padding: "12px 16px", background: "var(--brand-light)", color: "var(--brand)", borderRadius: "12px", textAlign: "center", fontWeight: 600, fontSize: 13 }}>
+            ✅ Parts approved — proceed to complete
+          </div>
         ) : (
           <div style={{ flex: 1, padding: "10px", background: "#f3e8ff", color: "#7c3aed", borderRadius: "8px", textAlign: "center", fontWeight: 600, fontSize: 13 }}>
             ⏳ Parts list submitted — awaiting manager approval
@@ -941,8 +961,9 @@ function PartsView({ job, onDone, setView }) {
 //   ServiceReportSubmitView integration, freshJob reload fix, compensation code
 // ══════════════════════════════════════════════════════════════════════════════
 function CompleteJobView({ job, onDone, setView, onBack }) {
-  const [workNotes, setWorkNotes] = useState("");
-  const [phase, setPhase] = useState("input"); // input | review | completing | report | done
+  // Phase: report | confirm | completing | done
+  const [phase, setPhase] = useState("report");
+  const [draftReport, setDraftReport] = useState(null);
   const [result, setResult] = useState(null);
   const [reportSubmitted, setReportSubmitted] = useState(false);
   const [freshJob, setFreshJob] = useState(null);
@@ -951,18 +972,31 @@ function CompleteJobView({ job, onDone, setView, onBack }) {
   const partsUsed = job.predictedParts || [];
 
   async function finish() {
+    if (!draftReport) return;
     setPhase("completing"); setError(null);
     try {
       const partIds = partsUsed.map(p => p.partId);
-      const res = await apiCompleteJob(job.id, partIds, workNotes || "Service completed");
-      setResult(res);
+      // 1. Mark ticket as COMPLETED in backend
+      try {
+        const res = await apiCompleteJob(job.id, partIds, draftReport.workDoneNotes || "Service completed");
+        setResult(res);
+      } catch (e) {
+        // If the error message indicates it's already completed, we treat it as success for the flow
+        if (e.message.toLowerCase().includes("completed") || e.message.toLowerCase().includes("status")) {
+          console.warn("Job already completed, proceeding to report submission.");
+        } else {
+          throw e;
+        }
+      }
+
+      // 2. Submit the service report
+      await submitServiceReport(job.id, draftReport);
+
       await onDone();
-      const reloaded = await fetchJobDetail(job.id);
-      setFreshJob(reloaded);
-      setPhase("report");
+      setPhase("done");
     } catch (e) {
       setError(e.message);
-      setPhase("review");
+      setPhase("confirm");
     }
   }
 
@@ -977,141 +1011,106 @@ function CompleteJobView({ job, onDone, setView, onBack }) {
     );
   }
 
-  // ── Service report phase ─────────────────────────────────────────────────
-  if (phase === "report") {
-    if (reportSubmitted) {
-      return (
-        <div className="animate-in" style={{ marginTop: 24, textAlign: "center" }}>
-          <div style={{ padding: "40px 32px", background: "var(--brand-light)", borderRadius: 20, border: "1px dashed var(--brand-mid)" }}>
-            <div style={{ width: 64, height: 64, background: "var(--brand)", color: "#fff", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 20px" }}>
-              <Icon.check style={{ width: 32 }} />
-            </div>
-            <h2 className="display-font" style={{ fontSize: 24, marginBottom: 8 }}>Job Fully Closed</h2>
-            <p style={{ color: "var(--text-secondary)", marginBottom: 8, fontSize: 14 }}>
-              Service report submitted to admin. All documents archived under ticket <strong>{job.id}</strong>.
-            </p>
-            {result?.compensationCode && (
-              <div style={{ padding: "16px", background: "#fff", borderRadius: 12, border: "1px solid var(--border)", margin: "16px auto", maxWidth: 300 }}>
-                <div style={{ fontSize: 11, fontWeight: 700, color: "var(--brand)", textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 6 }}>Compensation Code Issued</div>
-                <div className="mono" style={{ fontSize: 22, fontWeight: 800, letterSpacing: "0.1em" }}>{result.compensationCode}</div>
-                <div style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 4 }}>SLA was breached — voucher auto-generated for customer.</div>
-              </div>
-            )}
-            <button className="btn btn-primary" style={{ marginTop: 8 }} onClick={onBack}>Return to Dashboard</button>
+  // ── Done state ──────────────────────────────────────────────────────────
+  if (phase === "done") {
+    return (
+      <div className="animate-in" style={{ marginTop: 24, textAlign: "center" }}>
+        <div style={{ padding: "40px 32px", background: "var(--brand-light)", borderRadius: 20, border: "1px dashed var(--brand-mid)" }}>
+          <div style={{ width: 64, height: 64, background: "var(--brand)", color: "#fff", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 20px" }}>
+            <Icon.check style={{ width: 32 }} />
           </div>
+          <h2 className="display-font" style={{ fontSize: 24, marginBottom: 8 }}>Job Fully Closed</h2>
+          <p style={{ color: "var(--text-secondary)", marginBottom: 8, fontSize: 14 }}>
+            Service report submitted and ticket <strong>{job.id}</strong> is now officially closed.
+          </p>
+          {result?.compensationCode && (
+            <div style={{ padding: "16px", background: "#fff", borderRadius: 12, border: "1px solid var(--border)", margin: "16px auto", maxWidth: 300 }}>
+              <div style={{ fontSize: 11, fontWeight: 700, color: "var(--brand)", textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 6 }}>Compensation Code Issued</div>
+              <div className="mono" style={{ fontSize: 22, fontWeight: 800, letterSpacing: "0.1em" }}>{result.compensationCode}</div>
+              <div style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 4 }}>SLA was breached — voucher auto-generated for customer.</div>
+            </div>
+          )}
+          <button className="btn btn-primary" style={{ marginTop: 8 }} onClick={onBack}>Return to Dashboard</button>
         </div>
-      );
-    }
+      </div>
+    );
+  }
 
-    const jobForReport = freshJob || job;
+  // ── Service report phase ────────────────────────────────────────────────
+  if (phase === "report") {
+    return (
+      <ServiceReportSubmitView
+        job={job}
+        onDraftComplete={(data) => {
+          setDraftReport(data);
+          setPhase("confirm");
+        }}
+      />
+    );
+  }
+
+  // ── Confirm phase ───────────────────────────────────────────────────────
+  if (phase === "confirm") {
     return (
       <div className="animate-in" style={{ marginTop: 24 }}>
-        <div style={{ padding: "14px 18px", background: "#dcfce7", borderRadius: 10, border: "1px solid #bbf7d0", marginBottom: 20, display: "flex", alignItems: "center", gap: 10 }}>
-          <div style={{ width: 28, height: 28, background: "#16a34a", color: "#fff", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center" }}>
-            <Icon.check style={{ width: 14 }} />
-          </div>
-          <div>
-            <div style={{ fontWeight: 700, color: "#15803d", fontSize: 14 }}>Job Marked as Completed</div>
-            <div style={{ fontSize: 12, color: "#166534" }}>Now submit your service report to officially close this ticket.</div>
+        <h3 className="display-font mb-16" style={{ fontSize: 20 }}>Final Confirmation</h3>
+        <p style={{ fontSize: 14, color: "var(--text-secondary)", marginBottom: 20 }}>
+          The service report has been drafted. Review the job summary below and confirm to officially close this ticket.
+        </p>
+        {error && <ErrorBanner message={error} />}
+
+        {/* Job summary */}
+        <div className="card mb-16" style={{ background: "var(--bg-subtle)", borderStyle: "dashed" }}>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+            <div><div className="stat-label" style={{ marginTop: 0 }}>Customer</div><div style={{ fontWeight: 700 }}>{job.customerName}</div></div>
+            <div><div className="stat-label" style={{ marginTop: 0 }}>Ticket ID</div><div className="mono" style={{ fontWeight: 700, color: "var(--brand)" }}>{job.id}</div></div>
+            <div><div className="stat-label" style={{ marginTop: 0 }}>Product</div><div style={{ fontWeight: 600 }}>{job.productModel}</div></div>
+            <div><div className="stat-label" style={{ marginTop: 0 }}>Fault</div><div style={{ fontWeight: 600, color: "var(--accent)" }}>{job.faultType || "Not specified"}</div></div>
           </div>
         </div>
-        {result?.compensationCode && (
-          <div style={{ padding: "12px 16px", background: "#fff", borderRadius: 10, border: "1px solid var(--border)", marginBottom: 16 }}>
-            <div style={{ fontSize: 11, fontWeight: 700, color: "var(--accent)", textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 4 }}>⚠️ SLA Breached — Compensation Issued</div>
-            <div className="mono" style={{ fontSize: 18, fontWeight: 800 }}>{result.compensationCode}</div>
-          </div>
-        )}
-        <ServiceReportSubmitView
-          job={jobForReport}
-          onReportSubmitted={() => setReportSubmitted(true)}
-        />
-      </div>
-    );
-  }
 
-  // ── Review phase ─────────────────────────────────────────────────────────
-  if (phase === "review") {
-    return (
-      <div style={{ marginTop: 24 }}>
-        {error && <ErrorBanner message={error} />}
-        <div className="animate-in">
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
-            <h3 className="display-font" style={{ fontSize: 22, margin: 0 }}>Review Service</h3>
-            <span className="badge" style={{ background: "var(--brand-light)", color: "var(--brand)" }}>PREVIEW</span>
-          </div>
-
-          <div className="card mb-16" style={{ background: "var(--bg-subtle)", borderStyle: "dashed" }}>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
-              <div><div className="stat-label" style={{ marginTop: 0 }}>Customer</div><div style={{ fontWeight: 700 }}>{job.customerName}</div></div>
-              <div><div className="stat-label" style={{ marginTop: 0 }}>Ticket ID</div><div className="mono" style={{ fontWeight: 700, color: "var(--brand)" }}>{job.id}</div></div>
-              <div><div className="stat-label" style={{ marginTop: 0 }}>Product</div><div style={{ fontWeight: 600 }}>{job.productModel}</div></div>
-              <div><div className="stat-label" style={{ marginTop: 0 }}>Fault</div><div style={{ fontWeight: 600, color: "var(--accent)" }}>{job.faultType || "Not specified"}</div></div>
+        {partsUsed.length > 0 && (
+          <div className="card mb-16">
+            <div className="stat-label" style={{ marginTop: 0, marginBottom: 8 }}>Parts to Install</div>
+            <div style={{ border: "1px solid var(--border)", borderRadius: 8, overflow: "hidden" }}>
+              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+                <tbody>
+                  {partsUsed.map(p => (
+                    <tr key={p.partId} style={{ borderTop: "1px solid var(--border)" }}>
+                      <td style={{ padding: "8px 12px" }}>{p.name} <span className="mono" style={{ fontSize: 10, color: "var(--text-muted)" }}>({p.partId})</span></td>
+                      <td style={{ padding: "8px 12px", textAlign: "right", fontWeight: 600 }}>RM {(p.cost || 0).toFixed(2)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
           </div>
+        )}
 
-          <div className="card mb-16">
-            <div className="stat-label" style={{ marginTop: 0, marginBottom: 8 }}>Technical Action Taken</div>
-            <p style={{ fontSize: 14, lineHeight: 1.6 }}>{workNotes}</p>
-            {partsUsed.length > 0 && (
-              <>
-                <Divider label="Parts Used" />
-                <div style={{ border: "1px solid var(--border)", borderRadius: 8, overflow: "hidden" }}>
-                  <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
-                    <tbody>
-                      {partsUsed.map(p => (
-                        <tr key={p.partId} style={{ borderTop: "1px solid var(--border)" }}>
-                          <td style={{ padding: "8px 12px" }}>{p.name} <span className="mono" style={{ fontSize: 10, color: "var(--text-muted)" }}>({p.partId})</span></td>
-                          <td style={{ padding: "8px 12px", textAlign: "right", fontWeight: 600 }}>RM {(p.cost || 0).toFixed(2)}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </>
-            )}
-          </div>
+        <div style={{ padding: "14px 16px", background: "var(--brand-light)", borderRadius: 10, border: "1px solid var(--brand-mid)", marginBottom: 20 }}>
+          <p style={{ fontSize: 13, color: "var(--brand)", fontWeight: 600, margin: 0 }}>
+            ✓ Service Report Ready
+          </p>
+          <p style={{ fontSize: 12, color: "var(--text-secondary)", marginTop: 4 }}>
+            Notes: "{draftReport ? draftReport.workDoneNotes.substring(0, 100) : ""}{draftReport && draftReport.workDoneNotes.length > 100 ? "..." : ""}"
+          </p>
+        </div>
 
-          <div style={{ padding: "14px 16px", background: "var(--accent-light)", borderRadius: 10, border: "1px solid rgba(224,92,42,0.2)", marginBottom: 20 }}>
-            <p style={{ fontSize: 13, color: "var(--accent)", fontWeight: 600, margin: 0 }}>
-              ⚠️ After confirming, you'll be taken to submit the service report.
-            </p>
-          </div>
+        <div style={{ padding: "14px 16px", background: "var(--accent-light)", borderRadius: 10, border: "1px solid rgba(224,92,42,0.2)", marginBottom: 20 }}>
+          <p style={{ fontSize: 13, color: "var(--accent)", fontWeight: 600, margin: 0 }}>
+            ⚠️ Confirming will officially close ticket {job.id}.
+          </p>
+        </div>
 
-          <div style={{ display: "flex", gap: 12 }}>
-            <button className="btn btn-primary" style={{ flex: 1 }} onClick={finish}>Confirm & Complete Job</button>
-            <button className="btn btn-outline" onClick={() => setPhase("input")}>Edit Notes</button>
-          </div>
+        <div style={{ display: "flex", gap: 12 }}>
+          <button className="btn btn-primary" style={{ flex: 1 }} onClick={finish}>
+            Confirm & Close Ticket
+          </button>
+          <button className="btn btn-outline" onClick={() => setPhase("report")}>Edit Report</button>
         </div>
       </div>
     );
   }
-
-  // ── Input phase (default) ────────────────────────────────────────────────
-  return (
-    <div className="animate-in" style={{ marginTop: 24 }}>
-      <h3 className="display-font mb-16" style={{ fontSize: 20 }}>Finalize Service</h3>
-      <p style={{ fontSize: 14, color: "var(--text-secondary)", marginBottom: 20 }}>
-        Document the final technical actions performed. After confirming you'll submit the service report.
-      </p>
-      {error && <ErrorBanner message={error} />}
-      <div className="form-group">
-        <label className="form-label">Technical Action Notes</label>
-        <textarea
-          className="form-control"
-          style={{ minHeight: 120, lineHeight: 1.5 }}
-          placeholder="Detailed description of repairs, tests performed, and final state of the product..."
-          value={workNotes}
-          onChange={e => setWorkNotes(e.target.value)}
-        />
-      </div>
-      <div style={{ display: "flex", gap: 12 }}>
-        <button className="btn btn-primary" style={{ flex: 1 }} onClick={() => { setError(null); setPhase("review"); }} disabled={!workNotes}>
-          Review & Complete
-        </button>
-        <button className="btn btn-outline" onClick={() => setView("detail")}>Cancel</button>
-      </div>
-    </div>
-  );
 }
 
 

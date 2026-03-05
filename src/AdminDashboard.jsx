@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { getAdminFeedback, getPartsAnalytics, fetchPendingApprovals, approveOrRejectParts } from "./api";
+import { getAdminFeedback, getPartsAnalytics, fetchPendingApprovals, approveOrRejectParts, fetchApprovalHistory } from "./api";
 import { TicketDocumentsReview } from "./ServiceReportSubmit";
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
@@ -309,6 +309,179 @@ function PartsApprovalTab() {
       {approvals.length > 0
         ? approvals.map(a => <ApprovalCard key={a.ticketId} a={a} />)
         : <div className="card" style={{ textAlign: "center", padding: "48px", color: "var(--text-muted)" }}>No pending approvals. All parts requests are resolved. ✅</div>}
+
+      {/* ── Approval History — embedded below pending list ── */}
+      <ApprovalHistorySection />
+    </div>
+  );
+}
+
+
+// ── Approval History Section (embedded inside Parts Approval tab) ─────────────
+function ApprovalHistorySection() {
+  const [data, setData] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [filter, setFilter] = useState("ALL");
+  const [expanded, setExpanded] = useState(true);
+
+  const load = useCallback(async () => {
+    setLoading(true); setError(null);
+    try { setData(await fetchApprovalHistory()); }
+    catch (e) { setError(e.message); }
+    finally { setLoading(false); }
+  }, []);
+
+  useEffect(() => { load(); }, [load]);
+
+  function timeAgo(iso) {
+    if (!iso) return "—";
+    const diff = Date.now() - new Date(iso).getTime();
+    const days = Math.floor(diff / 86400000);
+    const h = Math.floor((diff % 86400000) / 3600000);
+    const m = Math.floor((diff % 3600000) / 60000);
+    if (days > 0) return `${days}d ${h}h ago`;
+    if (h > 0) return `${h}h ${m}m ago`;
+    return `${m}m ago`;
+  }
+
+  const filtered = data ? data.history.filter(h => filter === "ALL" || h.decision === filter) : [];
+
+  return (
+    <div style={{ marginTop: 40 }}>
+      {/* Section header — collapsible */}
+      <div
+        style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16, cursor: "pointer", userSelect: "none" }}
+        onClick={() => setExpanded(e => !e)}
+      >
+        <div>
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <div style={{ height: 1, width: 32, background: "var(--border)" }} />
+            <span style={{ fontSize: 11, fontWeight: 800, letterSpacing: "0.1em", textTransform: "uppercase", color: "var(--text-muted)" }}>
+              Approval History
+            </span>
+            {data && (
+              <span style={{ fontSize: 11, background: "var(--bg-subtle)", color: "var(--text-muted)", padding: "2px 8px", borderRadius: 20, fontWeight: 700 }}>
+                {data.count} decisions
+              </span>
+            )}
+            <div style={{ height: 1, flex: 1, background: "var(--border)" }} />
+          </div>
+          <p style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 4, marginLeft: 40 }}>Full record of approved and rejected parts requests</p>
+        </div>
+        <span style={{ fontSize: 18, color: "var(--text-muted)", marginLeft: 16 }}>{expanded ? "▲" : "▼"}</span>
+      </div>
+
+      {expanded && (
+        <div className="animate-in">
+          {loading && (
+            <div className="card" style={{ textAlign: "center", padding: "32px", color: "var(--text-muted)", fontSize: 13 }}>
+              Loading history...
+            </div>
+          )}
+          {error && (
+            <div className="card" style={{ background: "var(--accent-light)", color: "var(--accent)", padding: "16px", fontSize: 13 }}>
+              {error} <button className="btn btn-outline" onClick={load} style={{ marginLeft: 12, padding: "4px 10px", fontSize: 11 }}>Retry</button>
+            </div>
+          )}
+          {data && (
+            <>
+              {/* Summary stats */}
+              <div className="stats-grid" style={{ marginBottom: 16 }}>
+                <div className="card" style={{ padding: "14px 16px" }}>
+                  <div className="stat-label" style={{ fontSize: 10 }}>Total</div>
+                  <div className="stat-value" style={{ fontSize: 22 }}>{data.count}</div>
+                </div>
+                <div className="card" style={{ padding: "14px 16px" }}>
+                  <div className="stat-label" style={{ fontSize: 10 }}>Approved</div>
+                  <div className="stat-value" style={{ fontSize: 22, color: "var(--brand)" }}>{data.approvedCount}</div>
+                </div>
+                <div className="card" style={{ padding: "14px 16px" }}>
+                  <div className="stat-label" style={{ fontSize: 10 }}>Rejected</div>
+                  <div className="stat-value" style={{ fontSize: 22, color: "var(--accent)" }}>{data.rejectedCount}</div>
+                </div>
+                <div className="card" style={{ padding: "14px 16px" }}>
+                  <div className="stat-label" style={{ fontSize: 10 }}>Total Approved Value</div>
+                  <div className="stat-value" style={{ fontSize: 18 }}>
+                    RM {data.history.filter(h => h.decision === "APPROVED").reduce((s, h) => s + h.totalCost, 0).toFixed(2)}
+                  </div>
+                </div>
+              </div>
+
+              {/* Filter pills */}
+              <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
+                {["ALL", "APPROVED", "REJECTED"].map(f => (
+                  <button key={f} onClick={() => setFilter(f)} style={{
+                    padding: "5px 14px", borderRadius: 20, border: "none", cursor: "pointer",
+                    fontSize: 11, fontWeight: 700,
+                    background: filter === f ? (f === "REJECTED" ? "var(--accent)" : "var(--brand)") : "var(--bg-subtle)",
+                    color: filter === f ? "#fff" : "var(--text-secondary)",
+                    transition: "all 0.15s",
+                  }}>
+                    {f === "ALL" ? `All (${data.count})` : f === "APPROVED" ? `Approved (${data.approvedCount})` : `Rejected (${data.rejectedCount})`}
+                  </button>
+                ))}
+              </div>
+
+              {filtered.length === 0 ? (
+                <div className="card" style={{ textAlign: "center", padding: "32px", color: "var(--text-muted)", fontSize: 13 }}>
+                  No {filter !== "ALL" ? filter.toLowerCase() + " " : ""}decisions recorded yet.
+                </div>
+              ) : (
+                <div className="card" style={{ padding: 0, overflow: "hidden" }}>
+                  <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+                    <thead>
+                      <tr style={{ background: "var(--bg-subtle)" }}>
+                        {["TICKET", "CUSTOMER", "FAULT", "PARTS", "TOTAL", "WARRANTY", "DECISION", "DECIDED"].map(h => (
+                          <th key={h} style={{ padding: "10px 14px", textAlign: h === "TOTAL" || h === "DECIDED" ? "right" : h === "DECISION" ? "center" : "left", fontWeight: 700, fontSize: 10, color: "var(--text-secondary)" }}>{h}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {filtered.map((h, i) => {
+                        const isApproved = h.decision === "APPROVED";
+                        const warrantyOk = h.warrantyStatus === "UNDER_WARRANTY";
+                        return (
+                          <tr key={h.ticketId} style={{ borderTop: "1px solid var(--border)", background: i % 2 === 0 ? "#fff" : "var(--bg-subtle)" }}>
+                            <td style={{ padding: "10px 14px" }}>
+                              <div className="mono" style={{ fontSize: 11, color: "var(--brand)", fontWeight: 700 }}>{h.ticketId}</div>
+                              <div style={{ fontSize: 10, color: "var(--text-muted)", marginTop: 2 }}>{h.finalStatus}</div>
+                            </td>
+                            <td style={{ padding: "10px 14px" }}>
+                              <div style={{ fontWeight: 600, fontSize: 12 }}>{h.customerName}</div>
+                              <div style={{ fontSize: 10, color: "var(--text-muted)", marginTop: 2 }}>{h.subject}</div>
+                            </td>
+                            <td style={{ padding: "10px 14px", color: "var(--text-secondary)", fontSize: 12 }}>{h.faultType || "—"}</td>
+                            <td style={{ padding: "10px 14px" }}>
+                              {h.predictedParts.map((p, pi) => (
+                                <div key={pi} style={{ fontSize: 10, color: "var(--text-secondary)", lineHeight: 1.9 }}>• {p.name}</div>
+                              ))}
+                            </td>
+                            <td style={{ padding: "10px 14px", textAlign: "right", fontWeight: 700, fontSize: 12, color: isApproved ? "var(--brand)" : "var(--text-muted)" }}>
+                              RM {h.totalCost.toFixed(2)}
+                            </td>
+                            <td style={{ padding: "10px 14px" }}>
+                              <span className="badge" style={{ color: warrantyOk ? "var(--brand)" : "var(--accent)", background: warrantyOk ? "var(--brand-light)" : "var(--accent-light)", fontSize: 9 }}>
+                                {warrantyOk ? "Under Warranty" : "Expired"}
+                              </span>
+                            </td>
+                            <td style={{ padding: "10px 14px", textAlign: "center" }}>
+                              <span style={{ display: "inline-block", padding: "3px 8px", borderRadius: 20, fontSize: 10, fontWeight: 800, background: isApproved ? "#dcfce7" : "#ffe4e6", color: isApproved ? "#16a34a" : "#e11d48" }}>
+                                {isApproved ? "✓ APPROVED" : "✗ REJECTED"}
+                              </span>
+                            </td>
+                            <td style={{ padding: "10px 14px", textAlign: "right", fontSize: 10, color: "var(--text-muted)" }}>{timeAgo(h.decidedAt)}</td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </>
+          )}
+        </div>
+      )}
     </div>
   );
 }

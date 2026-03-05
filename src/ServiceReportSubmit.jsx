@@ -39,53 +39,6 @@ function InfoRow({ label, value, mono, accent }) {
     );
 }
 
-// Reusable inline signature pad (touch + mouse)
-function SignaturePad({ onSave, height = 140 }) {
-    const canvasRef = useRef(null);
-    const drawing = useRef(false);
-
-    useEffect(() => {
-        const ctx = canvasRef.current?.getContext("2d");
-        if (!ctx) return;
-        ctx.strokeStyle = "#1a1714";
-        ctx.lineWidth = 2;
-        ctx.lineCap = "round";
-        ctx.lineJoin = "round";
-    }, []);
-
-    function pos(e) {
-        const r = canvasRef.current.getBoundingClientRect();
-        const cx = e.touches ? e.touches[0].clientX : e.clientX;
-        const cy = e.touches ? e.touches[0].clientY : e.clientY;
-        return { x: cx - r.left, y: cy - r.top };
-    }
-
-    function start(e) { e.preventDefault(); drawing.current = true; const ctx = canvasRef.current.getContext("2d"); const p = pos(e); ctx.beginPath(); ctx.moveTo(p.x, p.y); }
-    function move(e) { e.preventDefault(); if (!drawing.current) return; const ctx = canvasRef.current.getContext("2d"); const p = pos(e); ctx.lineTo(p.x, p.y); ctx.stroke(); }
-    function stop() { drawing.current = false; }
-    function clear() { const c = canvasRef.current; c.getContext("2d").clearRect(0, 0, c.width, c.height); }
-    function save() { onSave(canvasRef.current.toDataURL("image/png")); }
-
-    return (
-        <div>
-            <div style={{ border: "1.5px solid var(--border)", borderRadius: 8, background: "#fff", overflow: "hidden", marginBottom: 8 }}>
-                <canvas
-                    ref={canvasRef}
-                    width={520}
-                    height={height}
-                    onMouseDown={start} onMouseMove={move} onMouseUp={stop} onMouseLeave={stop}
-                    onTouchStart={start} onTouchMove={move} onTouchEnd={stop}
-                    style={{ display: "block", cursor: "crosshair", touchAction: "none", width: "100%", height: height }}
-                />
-            </div>
-            <div style={{ display: "flex", gap: 8 }}>
-                <button className="btn btn-outline" onClick={clear} style={{ padding: "5px 14px", fontSize: 12 }}>Clear</button>
-                <button className="btn btn-primary" onClick={save} style={{ padding: "5px 14px", fontSize: 12 }}>Confirm Signature</button>
-            </div>
-        </div>
-    );
-}
-
 // ══════════════════════════════════════════════════════════════════════════════
 // COMPONENT 1 — ServiceReportSubmitView
 //
@@ -104,10 +57,9 @@ function SignaturePad({ onSave, height = 140 }) {
 //     : <div>✓ Report submitted</div>
 //   }
 // ══════════════════════════════════════════════════════════════════════════════
-export function ServiceReportSubmitView({ job, onReportSubmitted }) {
+export function ServiceReportSubmitView({ job, onReportSubmitted, onDraftComplete }) {
     const [phase, setPhase] = useState("form"); // form | preview | submitting | done
     const [workNotes, setWorkNotes] = useState(job.faultNotes || "");
-    const [signature, setSignature] = useState(null);
     const [error, setError] = useState(null);
     const [result, setResult] = useState(null);
 
@@ -116,20 +68,27 @@ export function ServiceReportSubmitView({ job, onReportSubmitted }) {
 
     async function handleSubmit() {
         if (!workNotes.trim()) { setError("Please describe the technical work done."); return; }
-        if (!signature) { setError("Technician signature is required to submit the report."); return; }
         setError(null);
+
+        const reportData = {
+            techId: "TECH-001",
+            faultType: job.faultType,
+            faultNotes: job.faultNotes,
+            workDoneNotes: workNotes,
+            partsUsed: partsUsed.map(p => ({ partId: p.partId, name: p.name, cost: p.cost })),
+            totalPartsCost: totalCost,
+            completedAt: job.completedAt || new Date().toISOString(),
+            signature: null,
+        };
+
+        if (onDraftComplete) {
+            onDraftComplete(reportData);
+            return;
+        }
+
         setPhase("submitting");
         try {
-            const res = await submitServiceReport(job.id, {
-                techId:         "TECH-001",
-                faultType:      job.faultType,
-                faultNotes:     job.faultNotes,
-                workDoneNotes:  workNotes,
-                partsUsed:      partsUsed.map(p => ({ partId: p.partId, name: p.name, cost: p.cost })),
-                totalPartsCost: totalCost,
-                completedAt:    job.completedAt || new Date().toISOString(),
-                signature:      signature,
-            });
+            const res = await submitServiceReport(job.id, reportData);
             setResult(res);
             setPhase("done");
             onReportSubmitted?.(res);
@@ -189,7 +148,7 @@ export function ServiceReportSubmitView({ job, onReportSubmitted }) {
 
                 {/* Job summary */}
                 <div className="card mb-16" style={{ background: "var(--bg-subtle)", borderStyle: "dashed" }}>
-                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 0 }}>
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
                         <InfoRow label="Customer" value={job.customerName} />
                         <InfoRow label="Ticket ID" value={job.id} mono accent="var(--brand)" />
                         <InfoRow label="Product" value={job.productModel} />
@@ -240,12 +199,6 @@ export function ServiceReportSubmitView({ job, onReportSubmitted }) {
                     )}
                 </div>
 
-                {/* Technician signature preview */}
-                <div className="card mb-16">
-                    <SectionLabel>Technician Signature</SectionLabel>
-                    <img src={signature} alt="Technician signature" style={{ border: "1px solid var(--border)", borderRadius: 8, maxWidth: "100%", display: "block" }} />
-                </div>
-
                 {/* Warning */}
                 <div style={{ padding: "14px 16px", background: "var(--accent-light)", borderRadius: 10, border: "1px solid rgba(224,92,42,0.2)", marginBottom: 20 }}>
                     <p style={{ fontSize: 13, color: "var(--accent)", fontWeight: 600, margin: 0 }}>
@@ -275,7 +228,7 @@ export function ServiceReportSubmitView({ job, onReportSubmitted }) {
 
             {/* Auto-filled context */}
             <div className="card mb-16" style={{ background: "var(--brand-light)", borderColor: "var(--brand-mid)" }}>
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 0 }}>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
                     <InfoRow label="Customer" value={job.customerName} />
                     <InfoRow label="Ticket" value={job.id} mono accent="var(--brand)" />
                     <InfoRow label="Fault Type" value={job.faultType || "Not logged"} accent="var(--accent)" />
@@ -295,25 +248,6 @@ export function ServiceReportSubmitView({ job, onReportSubmitted }) {
                 />
             </div>
 
-            {/* Technician signature */}
-            <div className="card mb-16">
-                <SectionLabel>Technician Signature <span style={{ color: "var(--accent)" }}>*</span></SectionLabel>
-                <p style={{ fontSize: 12, color: "var(--text-muted)", marginBottom: 12 }}>
-                    Sign below to certify accuracy of this service report.
-                </p>
-                {signature ? (
-                    <div>
-                        <div style={{ fontSize: 12, color: "var(--brand)", fontWeight: 600, marginBottom: 8 }}>✓ Signature captured</div>
-                        <img src={signature} alt="Technician signature" style={{ border: "1px solid var(--border)", borderRadius: 8, maxWidth: "100%", display: "block" }} />
-                        <button className="btn btn-outline" onClick={() => setSignature(null)} style={{ marginTop: 8, padding: "5px 12px", fontSize: 12 }}>
-                            Redraw
-                        </button>
-                    </div>
-                ) : (
-                    <SignaturePad onSave={setSignature} />
-                )}
-            </div>
-
             {error && (
                 <div style={{ background: "#ffe4e6", border: "1px solid #fecdd3", padding: "10px 14px", borderRadius: 8, marginBottom: 16, fontSize: 13, color: "#e11d48" }}>
                     {error}
@@ -324,7 +258,7 @@ export function ServiceReportSubmitView({ job, onReportSubmitted }) {
                 <button
                     className="btn btn-primary"
                     style={{ flex: 1 }}
-                    disabled={!workNotes.trim() || !signature}
+                    disabled={!workNotes.trim()}
                     onClick={() => { setError(null); setPhase("preview"); }}
                 >
                     Review & Preview Report
@@ -400,7 +334,7 @@ export function TicketDocumentsReview({ ticketId }) {
 
     // Tab strip — only show tabs that have content
     const tabs = [
-        hasReport    && { key: "report",    label: "📄 Service Report" },
+        hasReport && { key: "report", label: "📄 Service Report" },
         hasQuotation && { key: "quotation", label: "💰 Quotation" },
     ].filter(Boolean);
 
@@ -508,18 +442,10 @@ function ServiceReportPanel({ report }) {
                 </div>
             )}
 
-            {/* Technician signature */}
-            {report.techSignature && (
-                <div className="card mb-0">
-                    <SectionLabel>Technician Signature</SectionLabel>
-                    <div style={{ background: "var(--bg-subtle)", padding: 8, borderRadius: 8, border: "1px solid var(--border)" }}>
-                        <img src={report.techSignature} alt="Technician signature" style={{ maxWidth: "100%", display: "block", maxHeight: 100 }} />
-                    </div>
-                    <div style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 6 }}>
-                        Technician: <strong>{report.techId}</strong> · Completed: {fmt(report.completedAt)}
-                    </div>
-                </div>
-            )}
+            {/* Footer */}
+            <div style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 12, textAlign: "center", borderTop: "1px solid var(--border)", paddingTop: 12 }}>
+                Technician ID: <strong>{report.techId}</strong> · Completed: {fmt(report.completedAt)}
+            </div>
         </div>
     );
 }

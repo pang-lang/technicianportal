@@ -303,7 +303,7 @@ export async function submitServiceReport(ticketId, reportData) {
             parts_used: reportData.partsUsed,
             total_parts_cost: reportData.totalPartsCost,
             completed_at: reportData.completedAt,
-            tech_signature: reportData.signature,
+            tech_signature: reportData.signature || null,
         }),
     });
 }
@@ -344,5 +344,35 @@ export async function fetchTicketDocuments(ticketId) {
                 submittedAt: data.service_report.submitted_at,
             }
             : null,
+    };
+}
+/**
+ * Fetch full history of parts approval decisions (approved + rejected).
+ * Used by ApprovalHistorySection embedded in the Parts Approval tab.
+ */
+export async function fetchApprovalHistory() {
+    const d = await apiFetch("/portal/approval-history");
+    return {
+        history: (d.history || []).map(a => ({
+            ticketId: a.ticket_id,
+            customerName: a.customer_name,
+            subject: a.subject,
+            faultType: a.fault_type,
+            warrantyStatus: a.warranty_status,
+            totalCost: a.total_cost,
+            decision: a.decision,
+            finalStatus: a.final_status,
+            decidedAt: a.decided_at,
+            createdAt: a.created_at,
+            predictedParts: (a.predicted_parts || []).map(p => ({
+                partId: p.part_id,
+                name: p.name,
+                stock: (p.stock || "UNKNOWN").toUpperCase(),
+                cost: p.cost || 0,
+            })),
+        })),
+        count: d.count,
+        approvedCount: d.approved_count,
+        rejectedCount: d.rejected_count,
     };
 }
