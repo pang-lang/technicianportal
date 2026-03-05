@@ -103,7 +103,7 @@ function Divider({ label }) {
 }
 
 // ── Parts Approval Tab Component ─────────────────────────────────────────────
-function PartsApprovalTab() {
+function PartsApprovalTab({ partsData: stats }) {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -293,15 +293,11 @@ function PartsApprovalTab() {
         </button>
       </div>
 
-      <div className="stats-grid" style={{ marginBottom: 24 }}>
-        <div className="card">
-          <div className="stat-label">Pending Approvals</div>
-          <div className="stat-value" style={{ color: approvals.length > 0 ? "var(--accent)" : "inherit" }}>{approvals.length}</div>
-        </div>
-        <div className="card">
-          <div className="stat-label">Total Parts Cost</div>
-          <div className="stat-value">RM {approvals.reduce((s, a) => s + a.totalCost, 0).toFixed(2)}</div>
-        </div>
+      <div style={{ display: "flex", gap: 16, marginBottom: 32, flexWrap: "wrap" }}>
+        <StatCard label="Total Requests" value={stats?.total_requests || 0} sub="All time" />
+        <StatCard label="Approved" value={stats?.approved_count || 0} sub="Parts approved" accent="var(--brand)" />
+        <StatCard label="Pending" value={stats?.pending_count || 0} sub="Awaiting approval" accent="var(--accent)" />
+        <StatCard label="Rejected" value={stats?.rejected_count || 0} sub="Rejected requests" accent="var(--accent)" />
       </div>
 
       <Divider label="Awaiting Authorization" />
@@ -386,28 +382,6 @@ function ApprovalHistorySection() {
           )}
           {data && (
             <>
-              {/* Summary stats */}
-              <div className="stats-grid" style={{ marginBottom: 16 }}>
-                <div className="card" style={{ padding: "14px 16px" }}>
-                  <div className="stat-label" style={{ fontSize: 10 }}>Total</div>
-                  <div className="stat-value" style={{ fontSize: 22 }}>{data.count}</div>
-                </div>
-                <div className="card" style={{ padding: "14px 16px" }}>
-                  <div className="stat-label" style={{ fontSize: 10 }}>Approved</div>
-                  <div className="stat-value" style={{ fontSize: 22, color: "var(--brand)" }}>{data.approvedCount}</div>
-                </div>
-                <div className="card" style={{ padding: "14px 16px" }}>
-                  <div className="stat-label" style={{ fontSize: 10 }}>Rejected</div>
-                  <div className="stat-value" style={{ fontSize: 22, color: "var(--accent)" }}>{data.rejectedCount}</div>
-                </div>
-                <div className="card" style={{ padding: "14px 16px" }}>
-                  <div className="stat-label" style={{ fontSize: 10 }}>Total Approved Value</div>
-                  <div className="stat-value" style={{ fontSize: 18 }}>
-                    RM {data.history.filter(h => h.decision === "APPROVED").reduce((s, h) => s + h.totalCost, 0).toFixed(2)}
-                  </div>
-                </div>
-              </div>
-
               {/* Filter pills */}
               <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
                 {["ALL", "APPROVED", "REJECTED"].map(f => (
@@ -763,7 +737,7 @@ export default function AdminDashboard({ onLogout }) {
         {/* ════════════════════════════════════════════
             TAB: PARTS APPROVAL
         ════════════════════════════════════════════ */}
-        {tab === "approvals" && <PartsApprovalTab />}
+        {tab === "approvals" && <PartsApprovalTab partsData={parts} />}
 
         {/* ════════════════════════════════════════════
             TAB: SERVICE REPORTS (from v1)
@@ -893,12 +867,24 @@ export default function AdminDashboard({ onLogout }) {
             <div style={styles.heading}>Parts Analytics</div>
             <div style={styles.subheading}>Most requested spare parts across all service jobs</div>
 
-            {/* Stats */}
-            <div style={styles.statsRow}>
-              <StatCard label="Total Requests" value={parts.total_requests || 0} sub="All time" />
-              <StatCard label="Approved" value={parts.approved_count || 0} sub="Parts approved" accent="var(--brand)" />
-              <StatCard label="Pending" value={parts.pending_count || 0} sub="Awaiting approval" accent="var(--accent)" />
-              <StatCard label="Rejected" value={parts.rejected_count || 0} sub="Rejected requests" accent="var(--accent)" />
+            {/* Summary stats */}
+            <div className="stats-grid" style={{ marginBottom: 16 }}>
+              <div className="card" style={{ padding: "14px 16px" }}>
+                <div className="stat-label" style={{ fontSize: 10 }}>Total</div>
+                <div className="stat-value" style={{ fontSize: 22 }}>{parts.total_requests || 0}</div>
+              </div>
+              <div className="card" style={{ padding: "14px 16px" }}>
+                <div className="stat-label" style={{ fontSize: 10 }}>Approved</div>
+                <div className="stat-value" style={{ fontSize: 22, color: "var(--brand)" }}>{parts.approved_count || 0}</div>
+              </div>
+              <div className="card" style={{ padding: "14px 16px" }}>
+                <div className="stat-label" style={{ fontSize: 10 }}>Rejected</div>
+                <div className="stat-value" style={{ fontSize: 22, color: "var(--accent)" }}>{parts.rejected_count || 0}</div>
+              </div>
+              <div className="card" style={{ padding: "14px 16px" }}>
+                <div className="stat-label" style={{ fontSize: 10 }}>Pending</div>
+                <div className="stat-value" style={{ fontSize: 22, color: "var(--accent)" }}>{parts.pending_count || 0}</div>
+              </div>
             </div>
 
             {/* Bar Chart */}

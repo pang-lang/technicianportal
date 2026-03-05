@@ -303,7 +303,6 @@ export async function submitServiceReport(ticketId, reportData) {
             parts_used: reportData.partsUsed,
             total_parts_cost: reportData.totalPartsCost,
             completed_at: reportData.completedAt,
-            tech_signature: reportData.signature || null,
         }),
     });
 }

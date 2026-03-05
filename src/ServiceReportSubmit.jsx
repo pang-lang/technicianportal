@@ -78,7 +78,6 @@ export function ServiceReportSubmitView({ job, onReportSubmitted, onDraftComplet
             partsUsed: partsUsed.map(p => ({ partId: p.partId, name: p.name, cost: p.cost })),
             totalPartsCost: totalCost,
             completedAt: job.completedAt || new Date().toISOString(),
-            signature: null,
         };
 
         if (onDraftComplete) {

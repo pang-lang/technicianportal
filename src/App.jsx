@@ -291,16 +291,21 @@ function JobDetailPage({ jobId, onBack, onJobMutated }) {
   const [error, setError] = useState(null);
   const [view, setView] = useState("detail");
 
-  const loadDetail = useCallback(async () => {
-    setLoading(true); setError(null);
-    try { setJob(await fetchJobDetail(jobId)); }
+  const loadDetail = useCallback(async (options = {}) => {
+    const isSilent = options.silent === true;
+    if (!isSilent) setLoading(true);
+    setError(null);
+    try {
+      const data = await fetchJobDetail(jobId);
+      setJob(data);
+    }
     catch (e) { setError(e.message); }
-    finally { setLoading(false); }
+    finally { if (!isSilent) setLoading(false); }
   }, [jobId]);
 
   useEffect(() => { loadDetail(); }, [loadDetail]);
 
-  async function reloadAfterMutation() { await loadDetail(); onJobMutated(); }
+  async function reloadAfterMutation() { await loadDetail({ silent: true }); onJobMutated(); }
 
   if (loading) return <Spinner message="Loading job details..." />;
   if (error) return <ErrorBanner message={error} onRetry={loadDetail} />;
@@ -992,8 +997,8 @@ function CompleteJobView({ job, onDone, setView, onBack }) {
       // 2. Submit the service report
       await submitServiceReport(job.id, draftReport);
 
-      await onDone();
       setPhase("done");
+      await onDone();
     } catch (e) {
       setError(e.message);
       setPhase("confirm");
