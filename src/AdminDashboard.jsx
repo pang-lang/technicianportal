@@ -289,7 +289,7 @@ function PartsApprovalTab() {
 
 // ── Main Component ────────────────────────────────────────────────────────────
 
-export default function AdminDashboard() {
+export default function AdminDashboard({ onLogout }) {
   const [tab, setTab] = useState("approvals");
   const [feedbackData, setFeedbackData] = useState(null);
   const [partsData, setPartsData] = useState(null);
@@ -477,7 +477,7 @@ export default function AdminDashboard() {
             <div className="badge" style={{ background: "var(--brand-light)", color: "var(--brand)", textTransform: "none", borderRadius: 8 }}>
               <span style={{ opacity: 0.6, marginRight: 4 }}>ID:</span> ADMIN
             </div>
-            <button className="btn btn-outline" style={{ padding: "6px 12px", fontSize: 12 }} onClick={() => window.location.href = "/"}>
+            <button className="btn btn-outline" style={{ padding: "6px 12px", fontSize: 12 }} onClick={onLogout}>
               Logout
             </button>
           </div>

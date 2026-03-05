@@ -121,9 +121,11 @@ function LoginPage({ onLogin }) {
 
   function handleLogin() {
     if (user === "hafiz" && pass === "demo123") {
-      onLogin();
+      onLogin("technician");
+    } else if (user === "admin" && pass === "demo123") {
+      onLogin("admin");
     } else {
-      setError("Invalid credentials. Use hafiz / demo123");
+      setError("Invalid credentials. Use hafiz/demo123 (Technician) or admin/demo123 (Admin)");
     }
   }
 
@@ -139,7 +141,7 @@ function LoginPage({ onLogin }) {
           {error && <div style={{ background: "#ffe4e6", border: "1px solid #fecdd3", color: "#e11d48", padding: "12px", borderRadius: "8px", fontSize: "14px", marginBottom: "20px" }}>{error}</div>}
           <div className="form-group">
             <label className="form-label">Username</label>
-            <input className="form-control" placeholder="hafiz" value={user}
+            <input className="form-control" placeholder="hafiz or admin" value={user}
               onChange={e => setUser(e.target.value)} onKeyDown={e => e.key === "Enter" && handleLogin()} />
           </div>
           <div className="form-group">
@@ -148,6 +150,11 @@ function LoginPage({ onLogin }) {
               onChange={e => setPass(e.target.value)} onKeyDown={e => e.key === "Enter" && handleLogin()} />
           </div>
           <button className="btn btn-primary btn-full mt-8" onClick={handleLogin}>Sign In</button>
+          <div style={{ marginTop: 16, padding: 12, background: "var(--bg-subtle)", borderRadius: 8, fontSize: 12, color: "var(--text-muted)" }}>
+            <strong>Demo Credentials:</strong><br/>
+            Technician: hafiz / demo123<br/>
+            Admin: admin / demo123
+          </div>
         </div>
       </div>
     </div>
@@ -875,12 +882,7 @@ function EscalationPage() {
 // ROOT APP
 // ══════════════════════════════════════════════════════════════════════════════
 export default function App() {
-
-  if (window.location.pathname === "/admin") {
-    return <AdminDashboard />;
-  }
-
-  const [isLoggedIn, setIsLoggedIn]     = useState(false);
+  const [userRole, setUserRole]         = useState(null); // 'technician' | 'admin' | null
   const [jobs, setJobs]                 = useState([]);
   const [stats, setStats]               = useState({ total: 0, active: 0, breached: 0, completed: 0 });
   const [selectedJobId, setSelectedJobId] = useState(null);
@@ -889,6 +891,7 @@ export default function App() {
   const [error, setError]               = useState(null);
   const [alertBadge, setAlertBadge]     = useState(0);
 
+  // Define all hooks BEFORE any conditional returns
   const loadJobs = useCallback(async () => {
     setLoading(true); setError(null);
     try {
@@ -906,11 +909,38 @@ export default function App() {
     } catch (_) { /* silent */ }
   }, []);
 
+  // Handle direct /admin URL access - redirect to login if not authenticated as admin
   useEffect(() => {
-    if (isLoggedIn) { loadJobs(); loadBadges(); }
-  }, [isLoggedIn, loadJobs, loadBadges]);
+    if (window.location.pathname === "/admin" && userRole !== "admin") {
+      // Clear the URL to root, user will need to login
+      window.history.replaceState({}, "", "/");
+    }
+  }, [userRole]);
 
-  if (!isLoggedIn) return <LoginPage onLogin={() => setIsLoggedIn(true)} />;
+  useEffect(() => {
+    if (userRole === "technician") { loadJobs(); loadBadges(); }
+  }, [userRole, loadJobs, loadBadges]);
+
+  const handleLogin = (role) => {
+    setUserRole(role);
+    if (role === "admin") {
+      window.history.replaceState({}, "", "/admin");
+    } else {
+      window.history.replaceState({}, "", "/");
+    }
+  };
+
+  const handleLogout = () => {
+    setUserRole(null);
+    window.history.replaceState({}, "", "/");
+  };
+
+  // Show admin dashboard for admin role
+  if (userRole === "admin") {
+    return <AdminDashboard onLogout={handleLogout} />;
+  }
+
+  if (!userRole) return <LoginPage onLogin={handleLogin} />;
 
   function NavBtn({ id, label, badge, icon }) {
     const active = view === id && !selectedJobId;
@@ -950,7 +980,7 @@ export default function App() {
             <div className="badge" style={{ background: "var(--brand-light)", color: "var(--brand)", textTransform: "none", borderRadius: 8 }}>
               <span style={{ opacity: 0.6, marginRight: 4 }}>ID:</span> TECH-001
             </div>
-            <button className="btn btn-outline" style={{ padding: "6px 12px", fontSize: 12 }} onClick={() => setIsLoggedIn(false)}>
+            <button className="btn btn-outline" style={{ padding: "6px 12px", fontSize: 12 }} onClick={handleLogout}>
               Logout
             </button>
           </div>
