@@ -17,11 +17,11 @@ function StarRating({ rating }) {
 
 function Badge({ label, color }) {
   const colors = {
-    green:  { bg: "var(--brand-light)", text: "var(--brand)" },
-    red:    { bg: "var(--accent-light)", text: "var(--accent)" },
+    green: { bg: "var(--brand-light)", text: "var(--brand)" },
+    red: { bg: "var(--accent-light)", text: "var(--accent)" },
     orange: { bg: "#fdf0eb", text: "#e05c2a" },
-    blue:   { bg: "var(--brand-light)", text: "var(--brand)" },
-    gray:   { bg: "var(--bg-subtle)", text: "var(--text-muted)" },
+    blue: { bg: "var(--brand-light)", text: "var(--brand)" },
+    gray: { bg: "var(--bg-subtle)", text: "var(--text-muted)" },
   };
   const c = colors[color] || colors.gray;
   return (
@@ -76,19 +76,19 @@ function BarChart({ data }) {
 
 // ── Icons ────────────────────────────────────────────────────────────────────
 const Icon = {
-  tool:    () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 20, height: 20 }}><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z" /></svg>,
+  tool: () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 20, height: 20 }}><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z" /></svg>,
   refresh: () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 14, height: 14 }}><polyline points="23 4 23 10 17 10" /><polyline points="1 20 1 14 7 14" /><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" /></svg>,
-  mail:    () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 14, height: 14 }}><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" /><polyline points="22,6 12,13 2,6" /></svg>,
-  check:   () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ width: 16, height: 16 }}><polyline points="20 6 9 17 4 12" /></svg>,
-  back:    () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 16, height: 16 }}><polyline points="15 18 9 12 15 6" /></svg>,
+  mail: () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 14, height: 14 }}><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" /><polyline points="22,6 12,13 2,6" /></svg>,
+  check: () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ width: 16, height: 16 }}><polyline points="20 6 9 17 4 12" /></svg>,
+  back: () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 16, height: 16 }}><polyline points="15 18 9 12 15 6" /></svg>,
 };
 
 // ── Stock Config ─────────────────────────────────────────────────────────────
 const STOCK_CFG = {
-  AVAILABLE: { label: "AVAILABLE",    color: "#16a34a", bg: "#dcfce7" },
-  LOW:       { label: "LOW STOCK",    color: "#e05c2a", bg: "#fdf0eb" },
-  OUT:       { label: "OUT OF STOCK", color: "#e11d48", bg: "#ffe4e6" },
-  UNKNOWN:   { label: "UNKNOWN",      color: "#9c9590", bg: "#f3f1ee" },
+  AVAILABLE: { label: "AVAILABLE", color: "#16a34a", bg: "#dcfce7" },
+  LOW: { label: "LOW STOCK", color: "#e05c2a", bg: "#fdf0eb" },
+  OUT: { label: "OUT OF STOCK", color: "#e11d48", bg: "#ffe4e6" },
+  UNKNOWN: { label: "UNKNOWN", color: "#9c9590", bg: "#f3f1ee" },
 };
 
 // ── Divider Component ────────────────────────────────────────────────────────
@@ -104,11 +104,11 @@ function Divider({ label }) {
 
 // ── Parts Approval Tab Component ─────────────────────────────────────────────
 function PartsApprovalTab() {
-  const [data,    setData]    = useState(null);
+  const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [error,   setError]   = useState(null);
-  const [acting,  setActing]  = useState({});
-  const [toasts,  setToasts]  = useState([]);
+  const [error, setError] = useState(null);
+  const [acting, setActing] = useState({});
+  const [toasts, setToasts] = useState([]);
 
   const addToast = (msg, ok = true) => {
     const id = Date.now();
@@ -131,8 +131,8 @@ function PartsApprovalTab() {
       await approveOrRejectParts(ticketId, approved);
       addToast(
         approved
-          ? `✅ Parts approved — invoice email sent to customer.`
-          : `❌ Parts rejected — customer notified by email.`,
+          ? `✅ Parts approved — technician can now proceed with the repair.`
+          : `❌ Parts rejected — ticket has been cancelled.`,
         approved
       );
       await load();
@@ -164,9 +164,9 @@ function PartsApprovalTab() {
   const { approvals } = data;
 
   function ApprovalCard({ a }) {
-    const isActing   = !!acting[a.ticketId];
+    const isActing = !!acting[a.ticketId];
     const warrantyOk = a.warrantyStatus === "UNDER_WARRANTY";
-    const costHigh   = a.totalCost > 500;
+    const costHigh = a.totalCost > 500;
 
     // ── Reason banner logic ──
     // v1: always shows a billing note line + "all requests require manual auth"
@@ -175,17 +175,17 @@ function PartsApprovalTab() {
     // "manual authorization required" note for full clarity.
     let bannerBg, bannerColor, bannerMsg;
     if (!warrantyOk) {
-      bannerBg    = "var(--accent-light)";
+      bannerBg = "var(--accent-light)";
       bannerColor = "var(--accent)";
-      bannerMsg   = `⚠️ Warranty expired — customer will be billed RM ${a.totalCost.toFixed(2)} for parts and labour.`;
+      bannerMsg = `⚠️ Warranty expired — customer will be billed RM ${a.totalCost.toFixed(2)} for parts and labour.`;
     } else if (costHigh) {
-      bannerBg    = "var(--accent-light)";
+      bannerBg = "var(--accent-light)";
       bannerColor = "var(--accent)";
-      bannerMsg   = `⚠️ Cost RM ${a.totalCost.toFixed(2)} exceeds RM 500 auto-approval limit.`;
+      bannerMsg = `⚠️ Cost RM ${a.totalCost.toFixed(2)} exceeds RM 500 auto-approval limit.`;
     } else {
-      bannerBg    = "var(--brand-light)";
+      bannerBg = "var(--brand-light)";
       bannerColor = "var(--brand)";
-      bannerMsg   = `✅ Under warranty and within cost limit — safe to approve at no charge to customer.`;
+      bannerMsg = `✅ Under warranty and within cost limit — safe to approve at no charge to customer.`;
     }
 
     return (
@@ -220,8 +220,8 @@ function PartsApprovalTab() {
           <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
             <thead>
               <tr style={{ background: "var(--bg-subtle)" }}>
-                <th style={{ padding: "10px 14px", textAlign: "left",  fontWeight: 700, fontSize: 11, color: "var(--text-secondary)" }}>PART</th>
-                <th style={{ padding: "10px 14px", textAlign: "left",  fontWeight: 700, fontSize: 11, color: "var(--text-secondary)" }}>STOCK</th>
+                <th style={{ padding: "10px 14px", textAlign: "left", fontWeight: 700, fontSize: 11, color: "var(--text-secondary)" }}>PART</th>
+                <th style={{ padding: "10px 14px", textAlign: "left", fontWeight: 700, fontSize: 11, color: "var(--text-secondary)" }}>STOCK</th>
                 <th style={{ padding: "10px 14px", textAlign: "right", fontWeight: 700, fontSize: 11, color: "var(--text-secondary)" }}>COST</th>
               </tr>
             </thead>
@@ -256,7 +256,7 @@ function PartsApprovalTab() {
         {/* Email note */}
         <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, color: "var(--text-muted)", marginBottom: 16 }}>
           <Icon.mail />
-          An invoice email will be sent to the customer automatically on approval or rejection.
+          Approval sets ticket to PROCEED_JOB. The customer quotation email (if applicable) was already sent when the technician submitted it.
         </div>
 
         {/* Action buttons */}
@@ -318,7 +318,7 @@ function PartsApprovalTab() {
 // From v1 — not present in v2, added in full.
 // Lets admin search by ticket ID and view the archived quotation + service report.
 function ServiceReportsTab() {
-  const [ticketInput,    setTicketInput]    = useState("");
+  const [ticketInput, setTicketInput] = useState("");
   const [activeTicketId, setActiveTicketId] = useState(null);
 
   function handleSearch() {
@@ -422,11 +422,11 @@ function ServiceReportsTab() {
 // — "reports" tab added to the loading skip list (from v1)
 
 export default function AdminDashboard({ onLogout }) {
-  const [tab,          setTab]          = useState("approvals");
+  const [tab, setTab] = useState("approvals");
   const [feedbackData, setFeedbackData] = useState(null);
-  const [partsData,    setPartsData]    = useState(null);
-  const [loading,      setLoading]      = useState(true);
-  const [error,        setError]        = useState(null);
+  const [partsData, setPartsData] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
     async function load() {
@@ -506,11 +506,11 @@ export default function AdminDashboard({ onLogout }) {
       padding: "32px 24px",
       width: "100%",
     },
-    heading:    { fontSize: "1.6rem", fontWeight: 800, color: "var(--text-primary)", marginBottom: 4, fontFamily: "'Fraunces', serif" },
+    heading: { fontSize: "1.6rem", fontWeight: 800, color: "var(--text-primary)", marginBottom: 4, fontFamily: "'Fraunces', serif" },
     subheading: { fontSize: "0.9rem", color: "var(--text-secondary)", marginBottom: 28 },
-    statsRow:   { display: "flex", gap: 16, marginBottom: 32, flexWrap: "wrap" },
-    cardTitle:  { fontSize: "1rem", fontWeight: 700, color: "var(--text-primary)", marginBottom: 20 },
-    table:      { width: "100%", borderCollapse: "collapse" },
+    statsRow: { display: "flex", gap: 16, marginBottom: 32, flexWrap: "wrap" },
+    cardTitle: { fontSize: "1rem", fontWeight: 700, color: "var(--text-primary)", marginBottom: 20 },
+    table: { width: "100%", borderCollapse: "collapse" },
     th: {
       textAlign: "left", fontSize: "0.72rem", fontWeight: 700,
       color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.08em",
@@ -544,8 +544,8 @@ export default function AdminDashboard({ onLogout }) {
     </div>
   );
 
-  const fb    = feedbackData || {};
-  const parts = partsData    || {};
+  const fb = feedbackData || {};
+  const parts = partsData || {};
 
   function NavBtn({ id, label }) {
     const active = tab === id;
@@ -567,10 +567,10 @@ export default function AdminDashboard({ onLogout }) {
 
           {/* 4 tabs — approvals + reports from v1, parts + feedback present in both */}
           <nav style={{ display: "flex", gap: 32, marginLeft: 48, flex: 1 }}>
-            <NavBtn id="approvals" label="Parts Approval"    />
-            <NavBtn id="reports"   label="Service Reports"   />
-            <NavBtn id="parts"     label="Parts Analytics"   />
-            <NavBtn id="feedback"  label="Customer Feedback" />
+            <NavBtn id="approvals" label="Parts Approval" />
+            <NavBtn id="reports" label="Service Reports" />
+            <NavBtn id="parts" label="Parts Analytics" />
+            <NavBtn id="feedback" label="Customer Feedback" />
           </nav>
 
           <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
@@ -607,10 +607,10 @@ export default function AdminDashboard({ onLogout }) {
 
             {/* Stats */}
             <div style={styles.statsRow}>
-              <StatCard label="Total Reviews"        value={fb.total_feedback || 0}                                sub="All time" />
-              <StatCard label="Average Rating"       value={`${fb.average_rating || 0} ★`}                         sub="Across all tickets"       accent="var(--accent)" />
-              <StatCard label="Technicians Reviewed" value={fb.technician_summary?.length || 0}                    sub="With at least 1 review"   accent="var(--brand)" />
-              <StatCard label="5-Star Reviews"       value={fb.feedbacks?.filter(f => f.rating === 5).length || 0} sub="Perfect scores"            accent="var(--brand)" />
+              <StatCard label="Total Reviews" value={fb.total_feedback || 0} sub="All time" />
+              <StatCard label="Average Rating" value={`${fb.average_rating || 0} ★`} sub="Across all tickets" accent="var(--accent)" />
+              <StatCard label="Technicians Reviewed" value={fb.technician_summary?.length || 0} sub="With at least 1 review" accent="var(--brand)" />
+              <StatCard label="5-Star Reviews" value={fb.feedbacks?.filter(f => f.rating === 5).length || 0} sub="Perfect scores" accent="var(--brand)" />
             </div>
 
             {/* Technician Leaderboard */}
@@ -722,10 +722,10 @@ export default function AdminDashboard({ onLogout }) {
 
             {/* Stats */}
             <div style={styles.statsRow}>
-              <StatCard label="Total Requests" value={parts.total_requests || 0}  sub="All time" />
-              <StatCard label="Approved"        value={parts.approved_count || 0}  sub="Parts approved"    accent="var(--brand)" />
-              <StatCard label="Pending"         value={parts.pending_count || 0}   sub="Awaiting approval" accent="var(--accent)" />
-              <StatCard label="Rejected"        value={parts.rejected_count || 0}  sub="Rejected requests" accent="var(--accent)" />
+              <StatCard label="Total Requests" value={parts.total_requests || 0} sub="All time" />
+              <StatCard label="Approved" value={parts.approved_count || 0} sub="Parts approved" accent="var(--brand)" />
+              <StatCard label="Pending" value={parts.pending_count || 0} sub="Awaiting approval" accent="var(--accent)" />
+              <StatCard label="Rejected" value={parts.rejected_count || 0} sub="Rejected requests" accent="var(--accent)" />
             </div>
 
             {/* Bar Chart */}
