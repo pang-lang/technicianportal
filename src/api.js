@@ -405,3 +405,7 @@ export async function bookAppointment(ticketId, appointmentDate, notes = "") {
         body: JSON.stringify({ appointment_date: appointmentDate, notes }),
     });
 }
+/** For warranty jobs — request parts approval directly without quotation */
+export async function requestPartsApproval(ticketId) {
+    return apiFetch(`/portal/tickets/${ticketId}/request-parts-approval`, { method: "POST" });
+}

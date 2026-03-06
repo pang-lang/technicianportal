@@ -14,6 +14,7 @@ import {
   submitServiceReport,
   acceptOrRejectTicket as apiAcceptOrReject,
   bookAppointment as apiBookAppointment,
+  requestPartsApproval as apiRequestPartsApproval,
 } from "./api";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -424,15 +425,25 @@ function JobDetailPage({ jobId, onBack, onJobMutated }) {
             </button>
           )}
 
-          {/* ── JOB_STARTED with fault logged: show parts or complete ── */}
+          {/* ── JOB_STARTED with fault logged ── */}
           {job.status === "JOB_STARTED" && view === "detail" && job.faultType && (
             <div style={{ display: "flex", gap: 12 }}>
-              <button className="btn btn-outline" style={{ flex: 1 }} onClick={() => setView("parts")}>
-                View Parts
-              </button>
-              <button className="btn btn-primary" style={{ flex: 1 }} onClick={() => setView("complete")}>
-                Complete Service
-              </button>
+              {job.predictedParts?.length > 0 ? (
+                /* Parts predicted — primary action is to review & get quotation signed */
+                <>
+                  <button className="btn btn-primary" style={{ flex: 2 }} onClick={() => setView("parts")}>
+                    📋 Review Parts & {job.chargeApplicable ? "Get Quotation Signed" : "Request Approval"}
+                  </button>
+                  <button className="btn btn-outline" style={{ flex: 1 }} onClick={() => setView("complete")}>
+                    Complete
+                  </button>
+                </>
+              ) : (
+                /* No parts — go straight to complete */
+                <button className="btn btn-primary btn-full" onClick={() => setView("complete")}>
+                  Complete Service
+                </button>
+              )}
             </div>
           )}
 
@@ -877,36 +888,30 @@ function LogFaultView({ job, onDone, setView }) {
     }
   }
 
+  // After logging fault: if parts predicted, jump straight to PartsView to edit/sign
   if (result) {
-    const needsApproval = !result.partsApproved && result.predictedParts?.length > 0;
+    const hasParts = result.predictedParts?.length > 0;
+    if (hasParts) {
+      // Auto-redirect to parts view — no intermediate card needed
+      setView("parts");
+      return null;
+    }
+    // No parts needed — show confirmation and go back to detail
     return (
       <div className="animate-in" style={{ marginTop: 24 }}>
-        <div style={{
-          padding: "20px",
-          background: needsApproval ? "#f3e8ff" : "var(--brand-light)",
-          borderRadius: "12px",
-          border: `1px solid ${needsApproval ? "#e9d5ff" : "var(--brand-mid)"}`,
-        }}>
+        <div style={{ padding: "20px", background: "var(--brand-light)", borderRadius: "12px", border: "1px solid var(--brand-mid)" }}>
           <div style={{ display: "flex", gap: 12, alignItems: "flex-start" }}>
-            <div style={{ padding: "8px", background: needsApproval ? "#7c3aed" : "var(--brand)", color: "#fff", borderRadius: "8px" }}>
+            <div style={{ padding: "8px", background: "var(--brand)", color: "#fff", borderRadius: "8px" }}>
               <Icon.check style={{ width: 16 }} />
             </div>
             <div>
-              <div style={{ fontWeight: 700, color: needsApproval ? "#7c3aed" : "var(--brand)", marginBottom: 4 }}>
-                {needsApproval ? "Fault Logged — Awaiting Parts Approval" : "Fault Logged — No Parts Required"}
-              </div>
-              <p style={{ fontSize: 13, color: "var(--text-secondary)", marginBottom: 4 }}>
+              <div style={{ fontWeight: 700, color: "var(--brand)", marginBottom: 4 }}>Fault Logged — No Parts Required</div>
+              <p style={{ fontSize: 13, color: "var(--text-secondary)", marginBottom: 8 }}>
                 Diagnostic: <strong>{result.faultType}</strong>
-                {result.predictedParts?.length > 0 && ` — ${result.predictedParts.length} parts · RM ${result.totalCost?.toFixed(2)}`}
               </p>
-              <p style={{ fontSize: 12, color: "var(--text-muted)", marginBottom: needsApproval ? 16 : 0 }}>
-                {result.approvalReason}
-              </p>
-              {needsApproval && (
-                <button className="btn btn-outline" style={{ fontSize: 12 }} onClick={() => setView("parts")}>
-                  View Predicted Parts
-                </button>
-              )}
+              <button className="btn btn-primary" style={{ fontSize: 12 }} onClick={() => setView("detail")}>
+                Proceed to Complete Job
+              </button>
             </div>
           </div>
         </div>
@@ -1124,6 +1129,48 @@ function QuotationForm({ job, currentParts, onSubmit, onCancel }) {
 //   reset to AI predictions). QuotationForm receives currentParts.
 // — From v2: stock badge column retained in the read-only table header
 // ══════════════════════════════════════════════════════════════════════════════
+// ══════════════════════════════════════════════════════════════════════════════
+// WARRANTY PARTS APPROVAL BUTTON
+// For under-warranty jobs: no quotation needed, request approval directly.
+// ══════════════════════════════════════════════════════════════════════════════
+function WarrantyPartsApprovalButton({ job, onDone }) {
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState(null);
+
+  async function handleRequest() {
+    setSubmitting(true); setError(null);
+    try {
+      await apiRequestPartsApproval(job.id);
+      await onDone();
+    } catch (e) {
+      setError(e.message || "Failed to request approval.");
+      setSubmitting(false);
+    }
+  }
+
+  const total = (job.predictedParts || []).reduce((s, p) => s + parseFloat(p.cost || 0), 0);
+
+  return (
+    <div>
+      {error && <ErrorBanner message={error} />}
+      <div style={{ padding: "14px 16px", background: "#e0f2fe", borderRadius: "12px", border: "1px solid #bae6fd", marginBottom: 12, fontSize: 13 }}>
+        <div style={{ fontWeight: 700, color: "#0369a1", marginBottom: 4 }}>✅ Under Warranty — No Customer Payment Required</div>
+        <div style={{ color: "#075985" }}>
+          Parts cost (RM {total.toFixed(2)}) is covered under warranty. Submit for manager approval to proceed.
+        </div>
+      </div>
+      <button
+        className="btn btn-primary btn-full"
+        disabled={submitting}
+        onClick={handleRequest}
+      >
+        {submitting ? "Requesting..." : "🔧 Request Parts Approval"}
+      </button>
+    </div>
+  );
+}
+
+
 function PartsView({ job, onDone, setView }) {
   const [currentParts, setCurrentParts] = useState(() =>
     (job.predictedParts || []).map(p => ({ ...p, quantity: 1, isPredicted: true }))
@@ -1151,11 +1198,9 @@ function PartsView({ job, onDone, setView }) {
   function resetToAI() { setCurrentParts((job.predictedParts || []).map(p => ({ ...p, quantity: 1, isPredicted: true }))); }
 
   async function handleQuotationSubmit(quotationData) {
-    const res = await apiSubmitQuotation(quotationData);
-    // Transition status to AWAITING_PARTS so manager sees it
-    await updateJobStatus(job.id, "AWAITING_PARTS", "TECH-001", "Quotation submitted.");
+    // Backend now sets status to AWAITING_PARTS + writes escalation automatically
+    await apiSubmitQuotation(quotationData);
     await onDone();
-    // Navigate directly to detail view — job.status will now be AWAITING_PARTS
     setView("detail");
   }
 
@@ -1261,26 +1306,33 @@ function PartsView({ job, onDone, setView }) {
         </div>
       )}
 
-      <div style={{ display: "flex", gap: 12 }}>
-        {/* Hide quotation button once approval is in progress or already approved */}
-        {job.chargeApplicable && job.status !== "AWAITING_PARTS" && job.status !== "PROCEED_JOB" && job.status !== "COMPLETED" ? (
-          <button className="btn btn-primary" style={{ flex: 1 }} onClick={() => setShowQuotation(true)} disabled={currentParts.length === 0}>
-            Generate Quotation & Get Customer Signature
-          </button>
-        ) : job.status === "AWAITING_PARTS" ? (
-          <div style={{ flex: 1, padding: "12px 16px", background: "#f3e8ff", color: "#7c3aed", borderRadius: "12px", textAlign: "center", fontWeight: 600, fontSize: 13 }}>
+      <div style={{ display: "flex", gap: 12, flexDirection: "column" }}>
+        {/* ── Active editing states ── */}
+        {job.status === "JOB_STARTED" && (
+          job.chargeApplicable ? (
+            /* Chargeable job → must get customer signature + send quotation email */
+            <button className="btn btn-primary btn-full" onClick={() => setShowQuotation(true)} disabled={currentParts.length === 0}>
+              📋 Get Customer Signature & Send Quotation
+            </button>
+          ) : (
+            /* Warranty job → no payment needed, just request approval directly */
+            <WarrantyPartsApprovalButton job={job} onDone={async () => { await onDone(); setView("detail"); }} />
+          )
+        )}
+
+        {/* ── Status pills for post-submission states ── */}
+        {job.status === "AWAITING_PARTS" && (
+          <div style={{ padding: "14px 16px", background: "#f3e8ff", color: "#7c3aed", borderRadius: "12px", textAlign: "center", fontWeight: 600, fontSize: 13, border: "1px solid #e9d5ff" }}>
             ⏳ Awaiting manager parts approval
           </div>
-        ) : job.status === "PROCEED_JOB" || job.status === "COMPLETED" ? (
-          <div style={{ flex: 1, padding: "12px 16px", background: "var(--brand-light)", color: "var(--brand)", borderRadius: "12px", textAlign: "center", fontWeight: 600, fontSize: 13 }}>
+        )}
+        {(job.status === "PROCEED_JOB" || job.status === "COMPLETED") && (
+          <div style={{ padding: "14px 16px", background: "var(--brand-light)", color: "var(--brand)", borderRadius: "12px", textAlign: "center", fontWeight: 600, fontSize: 13, border: "1px solid var(--brand-mid)" }}>
             ✅ Parts approved — proceed to complete
           </div>
-        ) : (
-          <div style={{ flex: 1, padding: "10px", background: "#f3e8ff", color: "#7c3aed", borderRadius: "8px", textAlign: "center", fontWeight: 600, fontSize: 13 }}>
-            ⏳ Parts list submitted — awaiting manager approval
-          </div>
         )}
-        <button className="btn btn-outline" onClick={() => setView("detail")}>Back to Details</button>
+
+        <button className="btn btn-outline btn-full" onClick={() => setView("detail")}>Back to Details</button>
       </div>
     </div>
   );
