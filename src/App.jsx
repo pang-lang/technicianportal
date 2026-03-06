@@ -1039,8 +1039,10 @@ function PartsView({ job, onDone, setView, freshParts }) {
   const [currentParts, setCurrentParts] = useState(() => {
     // Use freshParts from the fault-log API response when available — this
     // avoids a race where job.predictedParts hasn't refreshed yet.
+    // Preserve stored quantity (e.g. manual parts with qty > 1); only
+    // default to 1 for parts that have no quantity set yet (new predictions).
     const source = freshParts || job.predictedParts || [];
-    return source.map(p => ({ ...p, quantity: 1, isPredicted: true }));
+    return source.map(p => ({ ...p, quantity: p.quantity || 1, isPredicted: true }));
   });
   const [newPartName, setNewPartName]     = useState("");
   const [newPartPrice, setNewPartPrice]   = useState("");

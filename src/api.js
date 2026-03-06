@@ -102,6 +102,7 @@ function normalizePart(p) {
         name: p.name,
         stock: (p.stock || "UNKNOWN").toUpperCase(),
         cost: p.cost || 0,
+        quantity: p.quantity || 1,
     };
 }
 
