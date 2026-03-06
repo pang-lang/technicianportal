@@ -909,10 +909,13 @@ function QuotationForm({ job, currentParts, onSubmit, onCancel }) {
           name: p.name,
           quantity: p.quantity || 1,
           // Warranty jobs: costs are covered, send 0 so the customer email shows no charge
-          unitCost: isWarranty ? 0 : p.cost,
-          totalCost: isWarranty ? 0 : p.cost * (p.quantity || 1),
+          // Always send real costs so they are stored correctly in the DB.
+          // The backend uses isWarranty to show RM 0 in the customer email.
+          unitCost: p.cost,
+          totalCost: p.cost * (p.quantity || 1),
         })),
-        totalAmount: isWarranty ? 0 : total,
+        // Always send real total for DB records; backend shows RM 0 for warranty in email
+        totalAmount: total,
         signature,
         createdAt: new Date().toISOString(),
       });
