@@ -14,7 +14,6 @@ import {
   submitServiceReport,
   acceptOrRejectTicket as apiAcceptOrReject,
   bookAppointment as apiBookAppointment,
-  requestPartsApproval as apiRequestPartsApproval,
 } from "./api";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -48,28 +47,28 @@ function slaPercent(createdAt, deadlineAt) {
 // ── Status / urgency / stock configs ─────────────────────────────────────────
 const STATUS_CFG = {
   PENDING_ACCEPTANCE: { label: "Pending Acceptance", color: "#b45309", bg: "#fef3c7" },
-  ACCEPTED:           { label: "Accepted", color: "#0369a1", bg: "#e0f2fe" },
-  APPOINTMENT_BOOKED: { label: "Appointment Booked", color: "#0d9488", bg: "#ccfbf1" },
-  ASSIGNED:           { label: "Pending Acceptance", color: "#b45309", bg: "#fef3c7" }, // legacy — treated as PENDING_ACCEPTANCE
-  JOB_STARTED: { label: "Job Started", color: "#e05c2a", bg: "#fdf0eb" },
-  AWAITING_PARTS: { label: "Awaiting Parts", color: "#7c3aed", bg: "#f3e8ff" },
-  PROCEED_JOB: { label: "Proceed Job", color: "#0891b2", bg: "#e0f7fa" },
-  COMPLETED: { label: "Completed", color: "#16a34a", bg: "#dcfce7" },
-  CANCELLED: { label: "Cancelled", color: "#9c9590", bg: "#f3f1ee" },
-  Open: { label: "Open", color: "#1d5fb3", bg: "#e8f0fc" },
+  ACCEPTED:           { label: "Accepted",            color: "#0369a1", bg: "#e0f2fe" },
+  APPOINTMENT_BOOKED: { label: "Appointment Booked",  color: "#0d9488", bg: "#ccfbf1" },
+  ASSIGNED:           { label: "Pending Acceptance",  color: "#b45309", bg: "#fef3c7" }, // legacy
+  JOB_STARTED:        { label: "Job Started",         color: "#e05c2a", bg: "#fdf0eb" },
+  AWAITING_PARTS:     { label: "Awaiting Parts",      color: "#7c3aed", bg: "#f3e8ff" },
+  PROCEED_JOB:        { label: "Proceed Job",         color: "#0891b2", bg: "#e0f7fa" },
+  COMPLETED:          { label: "Completed",           color: "#16a34a", bg: "#dcfce7" },
+  CANCELLED:          { label: "Cancelled",           color: "#9c9590", bg: "#f3f1ee" },
+  Open:               { label: "Open",                color: "#1d5fb3", bg: "#e8f0fc" },
 };
 
 const URGENCY_CFG = {
   CRITICAL: { label: "CRITICAL", color: "#e11d48", bg: "#ffe4e6" },
   STANDARD: { label: "STANDARD", color: "#e05c2a", bg: "#fdf0eb" },
-  LOW: { label: "LOW", color: "#16a34a", bg: "#dcfce7" },
+  LOW:      { label: "LOW",      color: "#16a34a", bg: "#dcfce7" },
 };
 
 const STOCK_CFG = {
-  AVAILABLE: { label: "AVAILABLE", color: "#16a34a", bg: "#dcfce7" },
-  LOW: { label: "LOW STOCK", color: "#e05c2a", bg: "#fdf0eb" },
-  OUT: { label: "OUT OF STOCK", color: "#e11d48", bg: "#ffe4e6" },
-  UNKNOWN: { label: "UNKNOWN", color: "#9c9590", bg: "#f3f1ee" },
+  AVAILABLE: { label: "AVAILABLE",   color: "#16a34a", bg: "#dcfce7" },
+  LOW:       { label: "LOW STOCK",   color: "#e05c2a", bg: "#fdf0eb" },
+  OUT:       { label: "OUT OF STOCK",color: "#e11d48", bg: "#ffe4e6" },
+  UNKNOWN:   { label: "UNKNOWN",     color: "#9c9590", bg: "#f3f1ee" },
 };
 
 // ── Shared UI atoms ──────────────────────────────────────────────────────────
@@ -105,25 +104,23 @@ function Divider({ label }) {
 
 // ── Icons ─────────────────────────────────────────────────────────────────────
 const Icon = {
-  jobs: () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="2" y="7" width="20" height="14" rx="2" /><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2" /></svg>,
-  alert: () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" /><line x1="12" y1="9" x2="12" y2="13" /><line x1="12" y1="17" x2="12.01" y2="17" /></svg>,
+  jobs:    () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="2" y="7" width="20" height="14" rx="2" /><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2" /></svg>,
+  alert:   () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" /><line x1="12" y1="9" x2="12" y2="13" /><line x1="12" y1="17" x2="12.01" y2="17" /></svg>,
   approve: () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M9 11l3 3L22 4" /><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" /></svg>,
   refresh: () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="23 4 23 10 17 10" /><polyline points="1 20 1 14 7 14" /><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" /></svg>,
-  back: () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="15 18 9 12 15 6" /></svg>,
-  tool: () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z" /></svg>,
+  back:    () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="15 18 9 12 15 6" /></svg>,
+  tool:    () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z" /></svg>,
   package: () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="16.5" y1="9.4" x2="7.5" y2="4.21" /><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" /><polyline points="3.27 6.96 12 12.01 20.73 6.96" /><line x1="12" y1="22.08" x2="12" y2="12" /></svg>,
-  check: () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="20 6 9 17 4 12" /></svg>,
-  clock: () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" /></svg>,
-  phone: () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12 19.79 19.79 0 0 1 1.61 3.53 2 2 0 0 1 3.6 1.37h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 8.1a16 16 0 0 0 6 6l.91-.91a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 21.73 15.5l.19 1.42z" /></svg>,
-  user: () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" /></svg>,
-  mail: () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" /><polyline points="22,6 12,13 2,6" /></svg>,
+  check:   () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="20 6 9 17 4 12" /></svg>,
+  clock:   () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" /></svg>,
+  phone:   () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12 19.79 19.79 0 0 1 1.61 3.53 2 2 0 0 1 3.6 1.37h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 8.1a16 16 0 0 0 6 6l.91-.91a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 21.73 15.5l.19 1.42z" /></svg>,
+  user:    () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" /></svg>,
+  mail:    () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" /><polyline points="22,6 12,13 2,6" /></svg>,
 };
 
 
 // ══════════════════════════════════════════════════════════════════════════════
 // LOGIN PAGE
-// — From v2: supports both technician (hafiz) and admin roles
-// — From v1: clean visual style retained
 // ══════════════════════════════════════════════════════════════════════════════
 function LoginPage({ onLogin }) {
   const [user, setUser] = useState("");
@@ -179,11 +176,9 @@ function LoginPage({ onLogin }) {
 
 // ══════════════════════════════════════════════════════════════════════════════
 // MY JOBS PAGE
-// — From v1: richer stats grid (4 stats), completed section, sort
-// — From v2: header title "Daily Operations", clock icon in SLA row
 // ══════════════════════════════════════════════════════════════════════════════
 function MyJobsPage({ jobs, stats, loading, error, onSelectJob, onRetry }) {
-  const active = jobs.filter(j => !["COMPLETED","CANCELLED","REJECTED"].includes(j.status));
+  const active = jobs.filter(j => !["COMPLETED", "CANCELLED", "REJECTED"].includes(j.status));
   const done = jobs.filter(j => j.status === "COMPLETED");
   const cancelled = jobs.filter(j => j.status === "CANCELLED" || j.status === "REJECTED");
 
@@ -245,7 +240,6 @@ function MyJobsPage({ jobs, stats, loading, error, onSelectJob, onRetry }) {
         <p style={{ color: "var(--text-secondary)" }}>Manage your service tickets and track performance</p>
       </div>
 
-      {/* 4-stat grid from v1 */}
       <div className="stats-grid mb-32">
         <div className="card"><div className="stat-label">Total Jobs</div><div className="stat-value">{stats.total}</div></div>
         <div className="card"><div className="stat-label">Active</div><div className="stat-value" style={{ color: "var(--brand)" }}>{stats.active}</div></div>
@@ -274,7 +268,7 @@ function MyJobsPage({ jobs, stats, loading, error, onSelectJob, onRetry }) {
       )}
       {cancelled.length > 0 && (
         <>
-          <Divider label="Cancelled" />
+          <Divider label="Cancelled / Rejected" />
           <div style={{ opacity: 0.75 }}>
             {cancelled.map(j => <JobItem key={j.id} job={j} />)}
           </div>
@@ -287,15 +281,15 @@ function MyJobsPage({ jobs, stats, loading, error, onSelectJob, onRetry }) {
 
 // ══════════════════════════════════════════════════════════════════════════════
 // JOB DETAIL PAGE
-// — From v1: PROCEED_JOB status handling, richer header card, full timeline
-//            with PROCEED_JOB step, completed docs archive
-// — From v2: cleaner back button style
 // ══════════════════════════════════════════════════════════════════════════════
 function JobDetailPage({ jobId, onBack, onJobMutated }) {
   const [job, setJob] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [view, setView] = useState("detail");
+  // Holds parts freshly returned from the fault-log API so PartsView
+  // never reads from a stale job.predictedParts before onDone refreshes.
+  const [freshParts, setFreshParts] = useState(null);
 
   const loadDetail = useCallback(async (options = {}) => {
     const isSilent = options.silent === true;
@@ -304,8 +298,7 @@ function JobDetailPage({ jobId, onBack, onJobMutated }) {
     try {
       const data = await fetchJobDetail(jobId);
       setJob(data);
-    }
-    catch (e) { setError(e.message); }
+    } catch (e) { setError(e.message); }
     finally { if (!isSilent) setLoading(false); }
   }, [jobId]);
 
@@ -322,7 +315,7 @@ function JobDetailPage({ jobId, onBack, onJobMutated }) {
   const sla = timeLeft(job.slaDeadlineAt);
   const pct = job.slaPercentage != null ? Math.round(job.slaPercentage) : slaPercent(job.createdAt, job.slaDeadlineAt);
 
-  // Full timeline including PROCEED_JOB (from v1)
+  // Full 7-step timeline
   const STEPS = [
     { key: "PENDING_ACCEPTANCE", label: "New Ticket",         icon: <Icon.user /> },
     { key: "ACCEPTED",           label: "Accepted",           icon: <Icon.check /> },
@@ -332,17 +325,17 @@ function JobDetailPage({ jobId, onBack, onJobMutated }) {
     { key: "PROCEED_JOB",        label: "Parts Approved",     icon: <Icon.approve /> },
     { key: "COMPLETED",          label: "Completed",          icon: <Icon.check /> },
   ];
-  const ORDER = ["PENDING_ACCEPTANCE","ACCEPTED","APPOINTMENT_BOOKED","JOB_STARTED","AWAITING_PARTS","PROCEED_JOB","COMPLETED"];
-  const curIdx = ORDER.indexOf(job.status);
+  const ORDER = ["PENDING_ACCEPTANCE", "ACCEPTED", "APPOINTMENT_BOOKED", "JOB_STARTED", "AWAITING_PARTS", "PROCEED_JOB", "COMPLETED"];
+  // Normalise legacy ASSIGNED to PENDING_ACCEPTANCE position
+  const curIdx = ORDER.indexOf(job.status === "ASSIGNED" ? "PENDING_ACCEPTANCE" : job.status);
 
   return (
     <div className="animate-in">
-      {/* Back button — v2 style */}
       <button className="btn btn-outline mb-16" onClick={onBack} style={{ display: "flex", alignItems: "center", gap: 6 }}>
         <Icon.back style={{ width: 16 }} /> Back to Jobs
       </button>
 
-      {/* Header Card — v1 layout with serial number grid from v2 */}
+      {/* Header Card */}
       <div className="card mb-24">
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 20 }}>
           <div>
@@ -401,45 +394,41 @@ function JobDetailPage({ jobId, onBack, onJobMutated }) {
         <div className="card">
           <h3 className="display-font mb-16" style={{ fontSize: 20 }}>Actions</h3>
 
-          {/* ── PENDING_ACCEPTANCE (or legacy ASSIGNED): Accept or Reject ── */}
+          {/* ── STEP 1: PENDING_ACCEPTANCE — Accept or Reject ── */}
           {(job.status === "PENDING_ACCEPTANCE" || job.status === "ASSIGNED") && view === "detail" && (
             <AcceptRejectView job={job} onDone={reloadAfterMutation} />
           )}
 
-          {/* ── ACCEPTED: Contact customer via WhatsApp/call, book appointment ── */}
+          {/* ── STEP 2: ACCEPTED — Contact & Book Appointment ── */}
           {job.status === "ACCEPTED" && view === "detail" && (
             <BookAppointmentView job={job} onDone={reloadAfterMutation} />
           )}
 
-          {/* ── APPOINTMENT_BOOKED: On appointment day, start the job ── */}
+          {/* ── STEP 3: APPOINTMENT_BOOKED — Send reminder & Start Job ── */}
           {job.status === "APPOINTMENT_BOOKED" && view === "detail" && (
             <AppointmentBookedView job={job} onDone={reloadAfterMutation} />
           )}
 
-
-
-          {/* ── JOB_STARTED without fault: Log fault ── */}
+          {/* ── STEP 4a: JOB_STARTED — no fault logged yet ── */}
           {job.status === "JOB_STARTED" && view === "detail" && !job.faultType && (
             <button className="btn btn-primary btn-full" onClick={() => setView("fault")}>
               Log Diagnostic Fault
             </button>
           )}
 
-          {/* ── JOB_STARTED with fault logged ── */}
+          {/* ── STEP 4b: JOB_STARTED — fault logged, parts predicted ── */}
           {job.status === "JOB_STARTED" && view === "detail" && job.faultType && (
             <div style={{ display: "flex", gap: 12 }}>
               {job.predictedParts?.length > 0 ? (
-                /* Parts predicted — primary action is to review & get quotation signed */
                 <>
                   <button className="btn btn-primary" style={{ flex: 2 }} onClick={() => setView("parts")}>
-                    📋 Review Parts & {job.chargeApplicable ? "Get Quotation Signed" : "Request Approval"}
+                    📋 Review Parts &amp; {job.chargeApplicable ? "Get Quotation Signed" : "Request Approval"}
                   </button>
                   <button className="btn btn-outline" style={{ flex: 1 }} onClick={() => setView("complete")}>
                     Complete
                   </button>
                 </>
               ) : (
-                /* No parts — go straight to complete */
                 <button className="btn btn-primary btn-full" onClick={() => setView("complete")}>
                   Complete Service
                 </button>
@@ -447,7 +436,7 @@ function JobDetailPage({ jobId, onBack, onJobMutated }) {
             </div>
           )}
 
-          {/* ── AWAITING_PARTS: waiting for admin approval ── */}
+          {/* ── STEP 5: AWAITING_PARTS ── */}
           {job.status === "AWAITING_PARTS" && view === "detail" && (
             <div>
               <div style={{ padding: "16px 20px", background: "#f3e8ff", borderRadius: "12px", border: "1px solid #e9d5ff", marginBottom: 16 }}>
@@ -462,21 +451,19 @@ function JobDetailPage({ jobId, onBack, onJobMutated }) {
                   You will be notified once approved and can then proceed with the repair.
                 </p>
               </div>
-              {job.chargeApplicable && (
-                <button className="btn btn-outline btn-full" onClick={() => setView("parts")}>
-                  View / Edit Quotation
-                </button>
-              )}
+              <button className="btn btn-outline btn-full" onClick={() => setView("parts")}>
+                View Submitted Quotation
+              </button>
             </div>
           )}
 
-          {/* ── PROCEED_JOB: parts approved, complete the job (from v1) ── */}
+          {/* ── STEP 6: PROCEED_JOB — parts approved ── */}
           {job.status === "PROCEED_JOB" && view === "detail" && (
             <div>
               <div style={{ padding: "16px 20px", background: "#e0f7fa", borderRadius: "12px", border: "1px solid #b2ebf2", marginBottom: 16 }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
                   <div style={{ width: 32, height: 32, background: "#0891b2", color: "#fff", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                    <Icon.check style={{ width: 5, height: 5 }} />
+                    <Icon.check style={{ width: 16 }} />
                   </div>
                   <div style={{ fontWeight: 700, color: "#0891b2", fontSize: 15 }}>Parts Approved — Ready to Proceed</div>
                 </div>
@@ -497,11 +484,11 @@ function JobDetailPage({ jobId, onBack, onJobMutated }) {
           )}
 
           {/* ── Sub-views ── */}
-          {view === "fault" && <LogFaultView job={job} onDone={reloadAfterMutation} setView={setView} />}
-          {view === "parts" && <PartsView job={job} onDone={reloadAfterMutation} setView={setView} />}
-          {view === "complete" && <CompleteJobView job={job} onDone={reloadAfterMutation} setView={setView} onBack={onBack} />}
+          {view === "fault"    && <LogFaultView    job={job} onDone={reloadAfterMutation} setView={setView} setFreshParts={setFreshParts} />}
+          {view === "parts"    && <PartsView       job={job} onDone={reloadAfterMutation} setView={setView} freshParts={freshParts} />}
+          {view === "complete" && <CompleteJobView  job={job} onDone={reloadAfterMutation} setView={setView} onBack={onBack} />}
 
-          {/* ── COMPLETED: show documents archive (from v1) ── */}
+          {/* ── STEP 7: COMPLETED — archived documents ── */}
           {job.status === "COMPLETED" && view === "detail" && (
             <div style={{ marginTop: 8 }}>
               <div style={{ padding: "12px 16px", background: "#dcfce7", borderRadius: 10, border: "1px solid #bbf7d0", marginBottom: 20, display: "flex", alignItems: "center", gap: 10 }}>
@@ -516,13 +503,13 @@ function JobDetailPage({ jobId, onBack, onJobMutated }) {
           )}
         </div>
 
-        {/* ── Timeline sidebar — full 5-step from v1 ── */}
+        {/* ── Timeline sidebar ── */}
         <div className="card">
           <h3 className="display-font mb-16" style={{ fontSize: 20 }}>Job History</h3>
           <div className="timeline">
             {STEPS.map((step, i) => {
               const stepIdx = ORDER.indexOf(step.key);
-              const isDone = stepIdx < curIdx;
+              const isDone   = stepIdx < curIdx;
               const isActive = stepIdx === curIdx;
               return (
                 <div key={step.key} className="timeline-item">
@@ -534,7 +521,7 @@ function JobDetailPage({ jobId, onBack, onJobMutated }) {
                   </div>
                   <div className="timeline-content">
                     <div className="timeline-title" style={{ color: isActive ? "var(--brand)" : isDone ? "var(--text-primary)" : "var(--text-muted)" }}>{step.label}</div>
-                    {isDone && <div className="timeline-meta">{timeAgo(job.createdAt)}</div>}
+                    {isDone   && <div className="timeline-meta">{timeAgo(job.createdAt)}</div>}
                     {isActive && <div className="timeline-meta" style={{ color: "var(--brand)", fontWeight: 600 }}>Active Phase</div>}
                   </div>
                 </div>
@@ -549,91 +536,60 @@ function JobDetailPage({ jobId, onBack, onJobMutated }) {
 
 
 // ══════════════════════════════════════════════════════════════════════════════
-// ACCEPT / REJECT VIEW
-// Shown when status = PENDING_ACCEPTANCE. Hafiz can accept or reject.
+// ACCEPT / REJECT VIEW  (V1)
 // ══════════════════════════════════════════════════════════════════════════════
 function AcceptRejectView({ job, onDone }) {
-  const [acting, setActing] = useState(null); // "accepting" | "rejecting"
+  const [acting, setActing] = useState(null);
   const [showRejectForm, setShowRejectForm] = useState(false);
   const [rejectReason, setRejectReason] = useState("");
   const [error, setError] = useState(null);
 
   async function handleAccept() {
     setActing("accepting"); setError(null);
-    try {
-      await apiAcceptOrReject(job.id, true);
-      await onDone();
-    } catch (e) { setError(e.message); setActing(null); }
+    try { await apiAcceptOrReject(job.id, true); await onDone(); }
+    catch (e) { setError(e.message); setActing(null); }
   }
 
   async function handleReject() {
     if (!rejectReason.trim()) { setError("Please provide a reason for rejection."); return; }
     setActing("rejecting"); setError(null);
-    try {
-      await apiAcceptOrReject(job.id, false, rejectReason);
-      await onDone();
-    } catch (e) { setError(e.message); setActing(null); }
+    try { await apiAcceptOrReject(job.id, false, rejectReason); await onDone(); }
+    catch (e) { setError(e.message); setActing(null); }
   }
 
   return (
     <div className="animate-in">
-      {/* New ticket banner */}
       <div style={{ padding: "16px 20px", background: "#fef3c7", borderRadius: 12, border: "1px solid #fde68a", marginBottom: 20 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
-          <div style={{ width: 32, height: 32, background: "#b45309", color: "#fff", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16 }}>
-            📋
-          </div>
+          <div style={{ width: 32, height: 32, background: "#b45309", color: "#fff", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16 }}>📋</div>
           <div style={{ fontWeight: 700, color: "#92400e", fontSize: 15 }}>New Ticket — Pending Your Acceptance</div>
         </div>
         <p style={{ fontSize: 13, color: "#78350f", margin: 0 }}>
-          Review the job details and accept or reject this ticket.
-          If accepted, you will contact the customer to book an appointment.
+          Review the job details and accept or reject this ticket. If accepted, you will contact the customer to book an appointment.
         </p>
       </div>
-
       {error && <ErrorBanner message={error} />}
-
       {!showRejectForm ? (
         <div style={{ display: "flex", gap: 12 }}>
-          <button
-            className="btn btn-primary"
-            style={{ flex: 1 }}
-            disabled={!!acting}
-            onClick={handleAccept}
-          >
+          <button className="btn btn-primary" style={{ flex: 1 }} disabled={!!acting} onClick={handleAccept}>
             {acting === "accepting" ? "Accepting..." : "✓ Accept Ticket"}
           </button>
-          <button
-            className="btn btn-outline"
-            style={{ flex: 1, color: "var(--accent)", borderColor: "var(--accent)" }}
-            disabled={!!acting}
-            onClick={() => setShowRejectForm(true)}
-          >
+          <button className="btn btn-outline" style={{ flex: 1, color: "var(--accent)", borderColor: "var(--accent)" }} disabled={!!acting} onClick={() => setShowRejectForm(true)}>
             ✗ Reject Ticket
           </button>
         </div>
       ) : (
         <div className="card" style={{ border: "1px solid rgba(224,92,42,0.3)", background: "var(--accent-light)" }}>
           <div style={{ fontWeight: 700, color: "var(--accent)", marginBottom: 12 }}>Reason for Rejection</div>
-          <textarea
-            className="form-control"
-            style={{ minHeight: 80, marginBottom: 12 }}
+          <textarea className="form-control" style={{ minHeight: 80, marginBottom: 12 }}
             placeholder="e.g. Outside service area, scheduling conflict..."
-            value={rejectReason}
-            onChange={e => setRejectReason(e.target.value)}
-          />
+            value={rejectReason} onChange={e => setRejectReason(e.target.value)} />
           <div style={{ display: "flex", gap: 10 }}>
-            <button
-              className="btn btn-outline"
-              style={{ flex: 1, color: "var(--accent)", borderColor: "var(--accent)" }}
-              disabled={acting === "rejecting"}
-              onClick={handleReject}
-            >
+            <button className="btn btn-outline" style={{ flex: 1, color: "var(--accent)", borderColor: "var(--accent)" }}
+              disabled={acting === "rejecting"} onClick={handleReject}>
               {acting === "rejecting" ? "Rejecting..." : "Confirm Reject"}
             </button>
-            <button className="btn btn-outline" onClick={() => { setShowRejectForm(false); setError(null); }}>
-              Cancel
-            </button>
+            <button className="btn btn-outline" onClick={() => { setShowRejectForm(false); setError(null); }}>Cancel</button>
           </div>
         </div>
       )}
@@ -643,8 +599,7 @@ function AcceptRejectView({ job, onDone }) {
 
 
 // ══════════════════════════════════════════════════════════════════════════════
-// BOOK APPOINTMENT VIEW
-// Shown when status = ACCEPTED. Hafiz contacts customer and books the date.
+// BOOK APPOINTMENT VIEW  (V1)
 // ══════════════════════════════════════════════════════════════════════════════
 function BookAppointmentView({ job, onDone }) {
   const [appointmentDate, setAppointmentDate] = useState("");
@@ -653,39 +608,29 @@ function BookAppointmentView({ job, onDone }) {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState(null);
 
-  // Build WhatsApp deep link — uses customer email as fallback if no phone
   const waMessage = encodeURIComponent(
     `Hi ${job.customerName}, this is Hafiz from Fiamma service team. ` +
     `I'm reaching out regarding your service ticket ${job.id} for your ${job.productModel}. ` +
     `I'd like to schedule an appointment — when would be convenient for you?`
   );
-  // Use a placeholder number — replace with actual customer phone when available
   const customerPhone = job.customerPhone ? job.customerPhone.replace(/\D/g, "") : "";
-  const waLink = customerPhone
-    ? `https://wa.me/60${customerPhone}?text=${waMessage}`
-    : `https://wa.me/?text=${waMessage}`;
+  const waLink = customerPhone ? `https://wa.me/60${customerPhone}?text=${waMessage}` : `https://wa.me/?text=${waMessage}`;
+  const today = new Date().toISOString().split("T")[0];
 
   async function handleBook() {
     if (!appointmentDate) { setError("Please select an appointment date."); return; }
     setSubmitting(true); setError(null);
     try {
-      const isoDate = `${appointmentDate}T${appointmentTime}:00`;
-      await apiBookAppointment(job.id, isoDate, notes);
+      await apiBookAppointment(job.id, `${appointmentDate}T${appointmentTime}:00`, notes);
       await onDone();
     } catch (e) { setError(e.message); setSubmitting(false); }
   }
 
-  // Min date = today
-  const today = new Date().toISOString().split("T")[0];
-
   return (
     <div className="animate-in">
-      {/* Status banner */}
       <div style={{ padding: "16px 20px", background: "#e0f2fe", borderRadius: 12, border: "1px solid #bae6fd", marginBottom: 20 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
-          <div style={{ width: 32, height: 32, background: "#0369a1", color: "#fff", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16 }}>
-            ✓
-          </div>
+          <div style={{ width: 32, height: 32, background: "#0369a1", color: "#fff", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16 }}>✓</div>
           <div style={{ fontWeight: 700, color: "#0c4a6e", fontSize: 15 }}>Ticket Accepted — Book Appointment</div>
         </div>
         <p style={{ fontSize: 13, color: "#075985", margin: 0 }}>
@@ -693,35 +638,19 @@ function BookAppointmentView({ job, onDone }) {
         </p>
       </div>
 
-      {/* Contact customer buttons */}
       <div style={{ display: "flex", gap: 10, marginBottom: 20 }}>
-        <a
-          href={waLink}
-          target="_blank"
-          rel="noreferrer"
-          style={{
-            flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
-            padding: "11px 16px", borderRadius: 10, background: "#25D366", color: "#fff",
-            fontWeight: 700, fontSize: 13, textDecoration: "none", border: "none",
-          }}
-        >
+        <a href={waLink} target="_blank" rel="noreferrer"
+          style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 8, padding: "11px 16px", borderRadius: 10, background: "#25D366", color: "#fff", fontWeight: 700, fontSize: 13, textDecoration: "none" }}>
           <span style={{ fontSize: 18 }}>💬</span> WhatsApp Customer
         </a>
         {customerPhone && (
-          <a
-            href={`tel:+60${customerPhone}`}
-            style={{
-              flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
-              padding: "11px 16px", borderRadius: 10, background: "var(--bg-subtle)", color: "var(--text-primary)",
-              fontWeight: 700, fontSize: 13, textDecoration: "none", border: "1px solid var(--border)",
-            }}
-          >
+          <a href={`tel:+60${customerPhone}`}
+            style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 8, padding: "11px 16px", borderRadius: 10, background: "var(--bg-subtle)", color: "var(--text-primary)", fontWeight: 700, fontSize: 13, textDecoration: "none", border: "1px solid var(--border)" }}>
             📞 Call Customer
           </a>
         )}
       </div>
 
-      {/* Customer info */}
       <div className="card mb-16" style={{ background: "var(--bg-subtle)" }}>
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, fontSize: 13 }}>
           <div><span style={{ color: "var(--text-muted)", fontSize: 11 }}>CUSTOMER</span><div style={{ fontWeight: 600 }}>{job.customerName}</div></div>
@@ -731,20 +660,13 @@ function BookAppointmentView({ job, onDone }) {
         </div>
       </div>
 
-      {/* Appointment date picker */}
       <div className="card">
         <div style={{ fontWeight: 700, marginBottom: 16, fontSize: 15 }}>📅 Book Appointment</div>
         {error && <ErrorBanner message={error} />}
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 12 }}>
           <div className="form-group" style={{ marginBottom: 0 }}>
             <label className="form-label">Date <span style={{ color: "var(--accent)" }}>*</span></label>
-            <input
-              type="date"
-              className="form-control"
-              min={today}
-              value={appointmentDate}
-              onChange={e => setAppointmentDate(e.target.value)}
-            />
+            <input type="date" className="form-control" min={today} value={appointmentDate} onChange={e => setAppointmentDate(e.target.value)} />
           </div>
           <div className="form-group" style={{ marginBottom: 0 }}>
             <label className="form-label">Time</label>
@@ -757,18 +679,9 @@ function BookAppointmentView({ job, onDone }) {
         </div>
         <div className="form-group" style={{ marginBottom: 12 }}>
           <label className="form-label">Notes (optional)</label>
-          <input
-            className="form-control"
-            placeholder="e.g. Customer prefers morning, side gate entry..."
-            value={notes}
-            onChange={e => setNotes(e.target.value)}
-          />
+          <input className="form-control" placeholder="e.g. Customer prefers morning, side gate entry..." value={notes} onChange={e => setNotes(e.target.value)} />
         </div>
-        <button
-          className="btn btn-primary btn-full"
-          disabled={!appointmentDate || submitting}
-          onClick={handleBook}
-        >
+        <button className="btn btn-primary btn-full" disabled={!appointmentDate || submitting} onClick={handleBook}>
           {submitting ? "Booking..." : "Confirm Appointment"}
         </button>
       </div>
@@ -778,22 +691,22 @@ function BookAppointmentView({ job, onDone }) {
 
 
 // ══════════════════════════════════════════════════════════════════════════════
-// APPOINTMENT BOOKED VIEW
-// Shown when status = APPOINTMENT_BOOKED. Shows the date and a "Start Job" button.
+// APPOINTMENT BOOKED VIEW  (V1)
 // ══════════════════════════════════════════════════════════════════════════════
 function AppointmentBookedView({ job, onDone }) {
   const [starting, setStarting] = useState(false);
   const [error, setError] = useState(null);
 
   const apptDate = job.appointmentDate
-    ? new Date(job.appointmentDate).toLocaleString("en-MY", {
-        weekday: "long", day: "2-digit", month: "long", year: "numeric",
-        hour: "2-digit", minute: "2-digit",
-      })
+    ? new Date(job.appointmentDate).toLocaleString("en-MY", { weekday: "long", day: "2-digit", month: "long", year: "numeric", hour: "2-digit", minute: "2-digit" })
     : "—";
-
-  // Check if today is on or after appointment date
   const canStart = !job.appointmentDate || new Date() >= new Date(job.appointmentDate);
+
+  const waMessage = encodeURIComponent(
+    `Hi ${job.customerName}, this is a reminder from Fiamma that your appliance service appointment is scheduled for ${apptDate}. Our technician will arrive at your location. Thank you!`
+  );
+  const customerPhone = job.customerPhone ? job.customerPhone.replace(/\D/g, "") : "";
+  const waLink = customerPhone ? `https://wa.me/60${customerPhone}?text=${waMessage}` : `https://wa.me/?text=${waMessage}`;
 
   async function handleStartJob() {
     setStarting(true); setError(null);
@@ -803,54 +716,24 @@ function AppointmentBookedView({ job, onDone }) {
     } catch (e) { setError(e.message); setStarting(false); }
   }
 
-  // WhatsApp reminder link
-  const waMessage = encodeURIComponent(
-    `Hi ${job.customerName}, this is a reminder from Fiamma that your appliance service appointment is scheduled for ${apptDate}. Our technician will arrive at your location. Thank you!`
-  );
-  const customerPhone = job.customerPhone ? job.customerPhone.replace(/\D/g, "") : "";
-  const waLink = customerPhone ? `https://wa.me/60${customerPhone}?text=${waMessage}` : `https://wa.me/?text=${waMessage}`;
-
   return (
     <div className="animate-in">
-      {/* Appointment confirmed banner */}
       <div style={{ padding: "16px 20px", background: "#ccfbf1", borderRadius: 12, border: "1px solid #99f6e4", marginBottom: 20 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
-          <div style={{ width: 32, height: 32, background: "#0d9488", color: "#fff", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16 }}>
-            📅
-          </div>
+          <div style={{ width: 32, height: 32, background: "#0d9488", color: "#fff", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16 }}>📅</div>
           <div style={{ fontWeight: 700, color: "#134e4a", fontSize: 15 }}>Appointment Confirmed</div>
         </div>
         <div style={{ fontSize: 15, fontWeight: 700, color: "#0f766e", marginBottom: 4 }}>{apptDate}</div>
         <p style={{ fontSize: 13, color: "#115e59", margin: 0 }}>
-          {canStart
-            ? "It's time! You can now start the job."
-            : "On the appointment day, tap 'Start Job' to begin the service."}
+          {canStart ? "It's time! You can now start the job." : "On the appointment day, tap 'Start Job' to begin the service."}
         </p>
       </div>
-
       {error && <ErrorBanner message={error} />}
-
-      {/* Send reminder button */}
-      <a
-        href={waLink}
-        target="_blank"
-        rel="noreferrer"
-        style={{
-          display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
-          padding: "10px 16px", borderRadius: 10, background: "#25D366", color: "#fff",
-          fontWeight: 700, fontSize: 13, textDecoration: "none", marginBottom: 12,
-        }}
-      >
+      <a href={waLink} target="_blank" rel="noreferrer"
+        style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, padding: "10px 16px", borderRadius: 10, background: "#25D366", color: "#fff", fontWeight: 700, fontSize: 13, textDecoration: "none", marginBottom: 12 }}>
         <span style={{ fontSize: 16 }}>💬</span> Send Appointment Reminder via WhatsApp
       </a>
-
-      {/* Start job button */}
-      <button
-        className="btn btn-primary btn-full"
-        disabled={starting}
-        onClick={handleStartJob}
-        style={{ opacity: canStart ? 1 : 0.65 }}
-      >
+      <button className="btn btn-primary btn-full" disabled={starting} onClick={handleStartJob} style={{ opacity: canStart ? 1 : 0.65 }}>
         {starting ? "Starting..." : "🔧 Start Job"}
       </button>
       {!canStart && (
@@ -865,9 +748,10 @@ function AppointmentBookedView({ job, onDone }) {
 
 // ══════════════════════════════════════════════════════════════════════════════
 // LOG FAULT VIEW
-// — From v1: shows "no parts required" vs "awaiting parts" result states
+// After submit: auto-redirects to PartsView if parts predicted, else shows
+// "no parts" confirmation and lets technician proceed to Complete.
 // ══════════════════════════════════════════════════════════════════════════════
-function LogFaultView({ job, onDone, setView }) {
+function LogFaultView({ job, onDone, setView, setFreshParts }) {
   const [faultType, setFaultType] = useState(job.faultType || "");
   const [notes, setNotes] = useState(job.faultNotes || "");
   const [submitting, setSubmitting] = useState(false);
@@ -888,15 +772,17 @@ function LogFaultView({ job, onDone, setView }) {
     }
   }
 
-  // After logging fault: if parts predicted, jump straight to PartsView to edit/sign
+  // Auto-redirect to parts view when parts are predicted
   if (result) {
     const hasParts = result.predictedParts?.length > 0;
     if (hasParts) {
-      // Auto-redirect to parts view — no intermediate card needed
+      // Store the API-fresh parts BEFORE redirecting so PartsView gets the
+      // correct list immediately, without waiting for job reload.
+      setFreshParts(result.predictedParts);
       setView("parts");
       return null;
     }
-    // No parts needed — show confirmation and go back to detail
+    // No parts — allow proceeding to complete
     return (
       <div className="animate-in" style={{ marginTop: 24 }}>
         <div style={{ padding: "20px", background: "var(--brand-light)", borderRadius: "12px", border: "1px solid var(--brand-mid)" }}>
@@ -906,10 +792,10 @@ function LogFaultView({ job, onDone, setView }) {
             </div>
             <div>
               <div style={{ fontWeight: 700, color: "var(--brand)", marginBottom: 4 }}>Fault Logged — No Parts Required</div>
-              <p style={{ fontSize: 13, color: "var(--text-secondary)", marginBottom: 8 }}>
+              <p style={{ fontSize: 13, color: "var(--text-secondary)", marginBottom: 12 }}>
                 Diagnostic: <strong>{result.faultType}</strong>
               </p>
-              <button className="btn btn-primary" style={{ fontSize: 12 }} onClick={() => setView("detail")}>
+              <button className="btn btn-primary" style={{ fontSize: 12 }} onClick={() => setView("complete")}>
                 Proceed to Complete Job
               </button>
             </div>
@@ -949,7 +835,6 @@ function LogFaultView({ job, onDone, setView }) {
 
 // ══════════════════════════════════════════════════════════════════════════════
 // SIGNATURE PAD
-// — Identical in both versions; using v1 (more concise)
 // ══════════════════════════════════════════════════════════════════════════════
 function SignaturePad({ onSave, width = 400, height = 150 }) {
   const canvasRef = useRef(null);
@@ -973,24 +858,22 @@ function SignaturePad({ onSave, width = 400, height = 150 }) {
   }
 
   function startDrawing(e) { e.preventDefault(); setIsDrawing(true); const ctx = canvasRef.current.getContext("2d"); const p = getPos(e); ctx.beginPath(); ctx.moveTo(p.x, p.y); }
-  function draw(e) { e.preventDefault(); if (!isDrawing) return; const ctx = canvasRef.current.getContext("2d"); const p = getPos(e); ctx.lineTo(p.x, p.y); ctx.stroke(); }
-  function stopDrawing() { setIsDrawing(false); }
-  function clear() { const c = canvasRef.current; c.getContext("2d").clearRect(0, 0, c.width, c.height); }
-  function save() { onSave(canvasRef.current.toDataURL("image/png")); }
+  function draw(e)          { e.preventDefault(); if (!isDrawing) return; const ctx = canvasRef.current.getContext("2d"); const p = getPos(e); ctx.lineTo(p.x, p.y); ctx.stroke(); }
+  function stopDrawing()    { setIsDrawing(false); }
+  function clear()          { const c = canvasRef.current; c.getContext("2d").clearRect(0, 0, c.width, c.height); }
+  function save()           { onSave(canvasRef.current.toDataURL("image/png")); }
 
   return (
     <div>
       <div style={{ border: "2px solid var(--border)", borderRadius: 8, background: "#fff", marginBottom: 12 }}>
-        <canvas
-          ref={canvasRef} width={width} height={height}
+        <canvas ref={canvasRef} width={width} height={height}
           onMouseDown={startDrawing} onMouseMove={draw} onMouseUp={stopDrawing} onMouseLeave={stopDrawing}
           onTouchStart={startDrawing} onTouchMove={draw} onTouchEnd={stopDrawing}
-          style={{ display: "block", cursor: "crosshair", touchAction: "none" }}
-        />
+          style={{ display: "block", cursor: "crosshair", touchAction: "none" }} />
       </div>
       <div style={{ display: "flex", gap: 8, justifyContent: "center" }}>
         <button className="btn btn-outline" onClick={clear} style={{ padding: "6px 12px", fontSize: 12 }}>Clear</button>
-        <button className="btn btn-primary" onClick={save} style={{ padding: "6px 12px", fontSize: 12 }}>Confirm Signature</button>
+        <button className="btn btn-primary" onClick={save}  style={{ padding: "6px 12px", fontSize: 12 }}>Confirm Signature</button>
       </div>
     </div>
   );
@@ -999,40 +882,42 @@ function SignaturePad({ onSave, width = 400, height = 150 }) {
 
 // ══════════════════════════════════════════════════════════════════════════════
 // QUOTATION FORM
-// — From v1: supports currentParts (editable list passed in), error banner,
-//   email warning. Unit price column from v2 merged in.
+// Collects customer signature + email for BOTH chargeable and warranty jobs.
+// Warranty jobs show a "Covered under warranty" notice instead of a total charge.
+// On submit: calls onSubmit(quotationData) and shows a spinner while in-flight.
 // ══════════════════════════════════════════════════════════════════════════════
 function QuotationForm({ job, currentParts, onSubmit, onCancel }) {
-  const [signature, setSignature] = useState(null);
-  const [email, setEmail] = useState(job.customerEmail || "");
+  const [signature, setSignature]   = useState(null);
+  const [email, setEmail]           = useState(job.customerEmail || "");
   const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState(null);
+  const [error, setError]           = useState(null);
 
-  const total = currentParts.reduce((sum, p) => sum + (p.cost * (p.quantity || 1)), 0);
+  const isWarranty = !job.chargeApplicable;
+  const total = currentParts.reduce((s, p) => s + p.cost * (p.quantity || 1), 0);
 
   async function handleSubmit() {
     if (!signature) return;
     setSubmitting(true); setError(null);
     try {
-      const quotationData = {
+      await onSubmit({
         jobId: job.id,
         customerName: job.customerName,
         customerEmail: email,
+        isWarranty,
         parts: currentParts.map(p => ({
           partId: p.partId,
           name: p.name,
           quantity: p.quantity || 1,
-          unitCost: p.cost,
-          totalCost: p.cost * (p.quantity || 1),
+          // Warranty jobs: costs are covered, send 0 so the customer email shows no charge
+          unitCost: isWarranty ? 0 : p.cost,
+          totalCost: isWarranty ? 0 : p.cost * (p.quantity || 1),
         })),
-        totalAmount: total,
+        totalAmount: isWarranty ? 0 : total,
         signature,
         createdAt: new Date().toISOString(),
-      };
-      await onSubmit(quotationData);
+      });
     } catch (e) {
       setError(e.message || "Failed to submit quotation. Please try again.");
-    } finally {
       setSubmitting(false);
     }
   }
@@ -1049,7 +934,17 @@ function QuotationForm({ job, currentParts, onSubmit, onCancel }) {
 
   return (
     <div className="animate-in" style={{ marginTop: 24 }}>
-      <h3 className="display-font mb-16" style={{ fontSize: 20 }}>Customer Quotation</h3>
+      <h3 className="display-font mb-16" style={{ fontSize: 20 }}>
+        {isWarranty ? "Warranty Parts — Get Customer Signature" : "Customer Quotation"}
+      </h3>
+
+      {/* Warranty notice */}
+      {isWarranty && (
+        <div style={{ padding: "12px 16px", background: "#e0f2fe", borderRadius: 10, border: "1px solid #bae6fd", marginBottom: 16, fontSize: 13 }}>
+          <div style={{ fontWeight: 700, color: "#0369a1", marginBottom: 2 }}>✅ Under Warranty — No Customer Charge</div>
+          <div style={{ color: "#075985" }}>Parts cost (RM {total.toFixed(2)}) is fully covered. Signature is required to confirm the work scope.</div>
+        </div>
+      )}
 
       {error && (
         <div style={{ background: "#ffe4e6", border: "1px solid #fecdd3", padding: "12px 16px", borderRadius: 8, marginBottom: 16, fontSize: 13, color: "#e11d48" }}>
@@ -1057,14 +952,17 @@ function QuotationForm({ job, currentParts, onSubmit, onCancel }) {
         </div>
       )}
 
+      {/* Parts table */}
       <div className="card mb-16" style={{ background: "var(--bg-subtle)" }}>
         <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
           <thead>
             <tr style={{ background: "var(--bg-subtle)" }}>
-              <th style={{ padding: "8px 12px", textAlign: "left", fontWeight: 700, fontSize: 11, color: "var(--text-secondary)" }}>PART</th>
+              <th style={{ padding: "8px 12px", textAlign: "left",   fontWeight: 700, fontSize: 11, color: "var(--text-secondary)" }}>PART</th>
               <th style={{ padding: "8px 12px", textAlign: "center", fontWeight: 700, fontSize: 11, color: "var(--text-secondary)" }}>QTY</th>
-              <th style={{ padding: "8px 12px", textAlign: "right", fontWeight: 700, fontSize: 11, color: "var(--text-secondary)" }}>UNIT</th>
-              <th style={{ padding: "8px 12px", textAlign: "right", fontWeight: 700, fontSize: 11, color: "var(--text-secondary)" }}>TOTAL</th>
+              <th style={{ padding: "8px 12px", textAlign: "right",  fontWeight: 700, fontSize: 11, color: "var(--text-secondary)" }}>UNIT (RM)</th>
+              <th style={{ padding: "8px 12px", textAlign: "right",  fontWeight: 700, fontSize: 11, color: "var(--text-secondary)" }}>
+                {isWarranty ? "COST (RM)" : "TOTAL (RM)"}
+              </th>
             </tr>
           </thead>
           <tbody>
@@ -1072,22 +970,30 @@ function QuotationForm({ job, currentParts, onSubmit, onCancel }) {
               <tr key={p.partId} style={{ borderTop: "1px solid var(--border)" }}>
                 <td style={{ padding: "8px 12px", fontWeight: 600 }}>{p.name}</td>
                 <td style={{ padding: "8px 12px", textAlign: "center" }}>{p.quantity || 1}</td>
-                <td style={{ padding: "8px 12px", textAlign: "right" }}>RM {p.cost.toFixed(2)}</td>
-                <td style={{ padding: "8px 12px", textAlign: "right", fontWeight: 600 }}>RM {(p.cost * (p.quantity || 1)).toFixed(2)}</td>
+                <td style={{ padding: "8px 12px", textAlign: "right" }}>{p.cost.toFixed(2)}</td>
+                <td style={{ padding: "8px 12px", textAlign: "right", fontWeight: 600 }}>{(p.cost * (p.quantity || 1)).toFixed(2)}</td>
               </tr>
             ))}
           </tbody>
           <tfoot>
             <tr style={{ borderTop: "1.5px solid var(--border)", background: "var(--bg-subtle)" }}>
-              <td colSpan={3} style={{ padding: "8px 12px", fontWeight: 700 }}>Total</td>
-              <td style={{ padding: "8px 12px", textAlign: "right", fontWeight: 800, color: "var(--brand)", fontSize: 15 }}>RM {total.toFixed(2)}</td>
+              <td colSpan={3} style={{ padding: "8px 12px", fontWeight: 700 }}>
+                {isWarranty ? "Total Parts Cost (Warranty)" : "Total"}
+              </td>
+              <td style={{ padding: "8px 12px", textAlign: "right", fontWeight: 800, color: isWarranty ? "#0369a1" : "var(--brand)", fontSize: 15 }}>
+                {isWarranty ? <span style={{ textDecoration: "line-through", opacity: 0.5, marginRight: 6 }}>RM {total.toFixed(2)}</span> : null}
+                {isWarranty ? <span style={{ color: "#16a34a" }}>RM 0.00</span> : `RM ${total.toFixed(2)}`}
+              </td>
             </tr>
           </tfoot>
         </table>
       </div>
 
+      {/* Signature pad */}
       <div className="card mb-16">
-        <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 12 }}>Customer Signature</div>
+        <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 12 }}>
+          {isWarranty ? "Customer Signature (Work Acknowledgement)" : "Customer Signature"}
+        </div>
         {signature ? (
           <div>
             <div style={{ fontSize: 12, color: "var(--brand)", fontWeight: 600, marginBottom: 8 }}>✓ Signature captured</div>
@@ -1099,22 +1005,17 @@ function QuotationForm({ job, currentParts, onSubmit, onCancel }) {
         )}
       </div>
 
+      {/* Email */}
       <div className="card mb-16" style={{ background: "var(--bg-subtle)" }}>
         <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 12 }}>Confirm Customer Email</div>
-        <input
-          className="form-control"
-          type="email"
-          placeholder="Enter recipient email..."
-          value={email}
-          onChange={e => setEmail(e.target.value)}
-          style={{ background: "#fff" }}
-        />
-        {!email && <div style={{ color: "var(--accent)", fontSize: 11, marginTop: 4, fontWeight: 600 }}>⚠ Required — quotation will be saved but cannot be emailed.</div>}
+        <input className="form-control" type="email" placeholder="Enter recipient email..." value={email}
+          onChange={e => setEmail(e.target.value)} style={{ background: "#fff" }} />
+        {!email && <div style={{ color: "var(--accent)", fontSize: 11, marginTop: 4, fontWeight: 600 }}>⚠ Required — document will be saved but cannot be emailed.</div>}
       </div>
 
       <div style={{ display: "flex", gap: 12 }}>
         <button className="btn btn-primary" style={{ flex: 1 }} disabled={!signature} onClick={handleSubmit}>
-          Submit Quotation & Email Customer
+          {isWarranty ? "Submit & Request Parts Approval" : "Submit Quotation & Email Customer"}
         </button>
         <button className="btn btn-outline" onClick={onCancel}>Cancel</button>
       </div>
@@ -1125,64 +1026,27 @@ function QuotationForm({ job, currentParts, onSubmit, onCancel }) {
 
 // ══════════════════════════════════════════════════════════════════════════════
 // PARTS VIEW
-// — From v1: editable parts list (add manual parts, adjust qty, remove,
-//   reset to AI predictions). QuotationForm receives currentParts.
-// — From v2: stock badge column retained in the read-only table header
+// Unified flow for both chargeable and warranty jobs:
+//   (1) Editable parts list  →  (2) QuotationForm (signature + email)
+//   →  (3) Submit  →  stays in view showing read-only summary + awaiting banner
+//
+// isReadOnly when status is AWAITING_PARTS, PROCEED_JOB, or COMPLETED.
 // ══════════════════════════════════════════════════════════════════════════════
-// ══════════════════════════════════════════════════════════════════════════════
-// WARRANTY PARTS APPROVAL BUTTON
-// For under-warranty jobs: no quotation needed, request approval directly.
-// ══════════════════════════════════════════════════════════════════════════════
-function WarrantyPartsApprovalButton({ job, onDone }) {
-  const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState(null);
-
-  async function handleRequest() {
-    setSubmitting(true); setError(null);
-    try {
-      await apiRequestPartsApproval(job.id);
-      await onDone();
-    } catch (e) {
-      setError(e.message || "Failed to request approval.");
-      setSubmitting(false);
-    }
-  }
-
-  const total = (job.predictedParts || []).reduce((s, p) => s + parseFloat(p.cost || 0), 0);
-
-  return (
-    <div>
-      {error && <ErrorBanner message={error} />}
-      <div style={{ padding: "14px 16px", background: "#e0f2fe", borderRadius: "12px", border: "1px solid #bae6fd", marginBottom: 12, fontSize: 13 }}>
-        <div style={{ fontWeight: 700, color: "#0369a1", marginBottom: 4 }}>✅ Under Warranty — No Customer Payment Required</div>
-        <div style={{ color: "#075985" }}>
-          Parts cost (RM {total.toFixed(2)}) is covered under warranty. Submit for manager approval to proceed.
-        </div>
-      </div>
-      <button
-        className="btn btn-primary btn-full"
-        disabled={submitting}
-        onClick={handleRequest}
-      >
-        {submitting ? "Requesting..." : "🔧 Request Parts Approval"}
-      </button>
-    </div>
-  );
-}
-
-
-function PartsView({ job, onDone, setView }) {
-  const [currentParts, setCurrentParts] = useState(() =>
-    (job.predictedParts || []).map(p => ({ ...p, quantity: 1, isPredicted: true }))
-  );
-  const [newPartName, setNewPartName] = useState("");
-  const [newPartPrice, setNewPartPrice] = useState("");
+function PartsView({ job, onDone, setView, freshParts }) {
+  const [currentParts, setCurrentParts] = useState(() => {
+    // Use freshParts from the fault-log API response when available — this
+    // avoids a race where job.predictedParts hasn't refreshed yet.
+    const source = freshParts || job.predictedParts || [];
+    return source.map(p => ({ ...p, quantity: 1, isPredicted: true }));
+  });
+  const [newPartName, setNewPartName]     = useState("");
+  const [newPartPrice, setNewPartPrice]   = useState("");
   const [showQuotation, setShowQuotation] = useState(false);
-  const [quotationSubmitted, setQuotationSubmitted] = useState(false);
-  const [submitMsg, setSubmitMsg] = useState("");
-  const isReadOnly = job.status === "AWAITING_PARTS" || job.status === "PROCEED_JOB" || job.status === "COMPLETED";
+  const [submitted, setSubmitted]         = useState(false);
+  const [submitMsg, setSubmitMsg]         = useState("");
 
-  const total = currentParts.reduce((sum, p) => sum + (p.cost * (p.quantity || 1)), 0);
+  const isReadOnly = ["AWAITING_PARTS", "PROCEED_JOB", "COMPLETED"].includes(job.status);
+  const total = currentParts.reduce((s, p) => s + p.cost * (p.quantity || 1), 0);
 
   function updateQuantity(partId, qty) {
     setCurrentParts(prev => prev.map(p => p.partId === partId ? { ...p, quantity: Math.max(1, parseInt(qty) || 1) } : p));
@@ -1195,15 +1059,18 @@ function PartsView({ job, onDone, setView }) {
     setCurrentParts(prev => [...prev, { partId: `MANUAL-${Date.now()}`, name: newPartName, cost: priceNum, quantity: 1, isPredicted: false }]);
     setNewPartName(""); setNewPartPrice("");
   }
-  function resetToAI() { setCurrentParts((job.predictedParts || []).map(p => ({ ...p, quantity: 1, isPredicted: true }))); }
+  function resetToAI() { setCurrentParts((freshParts || job.predictedParts || []).map(p => ({ ...p, quantity: 1, isPredicted: true }))); }
 
   async function handleQuotationSubmit(quotationData) {
-    // Backend now sets status to AWAITING_PARTS + writes escalation automatically
-    await apiSubmitQuotation(quotationData);
-    await onDone();
-    setView("detail");
+    // Backend sets status to AWAITING_PARTS and creates escalation
+    const res = await apiSubmitQuotation(quotationData);
+    setSubmitMsg(res?.message || "Quotation saved and submitted.");
+    setSubmitted(true);
+    setShowQuotation(false);
+    await onDone(); // silently refreshes job in parent
   }
 
+  // ── Quotation form sub-view ──────────────────────────────────────────────
   if (showQuotation) {
     return (
       <QuotationForm
@@ -1215,16 +1082,106 @@ function PartsView({ job, onDone, setView }) {
     );
   }
 
+  // ── Post-submit: read-only summary + awaiting banner ─────────────────────
+  if (submitted || isReadOnly) {
+    const isApproved = job.status === "PROCEED_JOB" || job.status === "COMPLETED";
+    return (
+      <div className="animate-in" style={{ marginTop: 24 }}>
+        <h3 className="display-font mb-16" style={{ fontSize: 20 }}>Parts &amp; Quotation</h3>
+
+        {/* Status banner */}
+        {isApproved ? (
+          <div style={{ padding: "14px 16px", background: "var(--brand-light)", borderRadius: 12, border: "1px solid var(--brand-mid)", marginBottom: 20, display: "flex", alignItems: "center", gap: 12 }}>
+            <div style={{ width: 32, height: 32, background: "var(--brand)", color: "#fff", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+              <Icon.check style={{ width: 16 }} />
+            </div>
+            <div>
+              <div style={{ fontWeight: 700, color: "var(--brand)", fontSize: 14 }}>Parts Approved by Manager</div>
+              <div style={{ fontSize: 12, color: "var(--text-secondary)", marginTop: 2 }}>Parts have been issued — proceed to complete the repair.</div>
+            </div>
+          </div>
+        ) : (
+          <div style={{ padding: "14px 16px", background: "#f3e8ff", borderRadius: 12, border: "1px solid #e9d5ff", marginBottom: 20, display: "flex", alignItems: "center", gap: 12 }}>
+            <div style={{ width: 32, height: 32, background: "#7c3aed", color: "#fff", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+              <Icon.package style={{ width: 16 }} />
+            </div>
+            <div>
+              <div style={{ fontWeight: 700, color: "#7c3aed", fontSize: 14 }}>Awaiting Manager Approval</div>
+              <div style={{ fontSize: 12, color: "#6b21a8", marginTop: 2 }}>
+                {submitMsg || "Your spare part request has been sent to the manager for authorization."}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Read-only parts table */}
+        <div className="card mb-16">
+          <div style={{ border: "1px solid var(--border)", borderRadius: "12px", overflow: "hidden" }}>
+            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 14 }}>
+              <thead>
+                <tr style={{ background: "var(--bg-subtle)", textAlign: "left" }}>
+                  <th style={{ padding: "12px 16px", fontWeight: 700, fontSize: 12, color: "var(--text-secondary)" }}>PART NAME</th>
+                  <th style={{ padding: "12px 16px", fontWeight: 700, fontSize: 12, color: "var(--text-secondary)" }}>STOCK</th>
+                  <th style={{ padding: "12px 16px", fontWeight: 700, fontSize: 12, color: "var(--text-secondary)", textAlign: "center" }}>QTY</th>
+                  <th style={{ padding: "12px 16px", fontWeight: 700, fontSize: 12, color: "var(--text-secondary)", textAlign: "right" }}>COST (RM)</th>
+                </tr>
+              </thead>
+              <tbody>
+                {currentParts.map(p => {
+                  const stock = STOCK_CFG[p.stock] || STOCK_CFG.UNKNOWN;
+                  return (
+                    <tr key={p.partId} style={{ borderTop: "1px solid var(--border)" }}>
+                      <td style={{ padding: "12px 16px" }}>
+                        <div style={{ fontWeight: 600 }}>{p.name}</div>
+                        <div className="mono" style={{ fontSize: 11, color: "var(--text-muted)" }}>{p.partId}</div>
+                      </td>
+                      <td style={{ padding: "12px 16px" }}>
+                        <span className="badge" style={{ color: stock.color, background: stock.bg, fontSize: 10 }}>{stock.label}</span>
+                      </td>
+                      <td style={{ padding: "12px 16px", textAlign: "center", fontWeight: 600 }}>{p.quantity || 1}</td>
+                      <td style={{ padding: "12px 16px", textAlign: "right", fontWeight: 600 }}>{(p.cost * (p.quantity || 1)).toFixed(2)}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+              <tfoot>
+                <tr style={{ background: "var(--bg-subtle)", borderTop: "1px solid var(--border)" }}>
+                  <td colSpan="3" style={{ padding: "12px 16px", fontWeight: 700, textAlign: "right" }}>Total</td>
+                  <td style={{ padding: "12px 16px", textAlign: "right", fontWeight: 800, color: "var(--brand)", fontSize: 16 }}>{total.toFixed(2)}</td>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+        </div>
+
+        {/* Warranty badge if applicable */}
+        {!job.chargeApplicable && (
+          <div style={{ padding: "10px 14px", background: "#e0f2fe", borderRadius: 8, border: "1px solid #bae6fd", marginBottom: 16, fontSize: 12, fontWeight: 600, color: "#0369a1" }}>
+            ✅ Under Warranty — Customer charged RM 0.00
+          </div>
+        )}
+
+        <button className="btn btn-outline btn-full" onClick={() => setView("detail")}>Back to Details</button>
+      </div>
+    );
+  }
+
+  // ── Default: editable parts list ─────────────────────────────────────────
   return (
     <div className="animate-in" style={{ marginTop: 24 }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
-        <h3 className="display-font" style={{ fontSize: 20 }}>Quotation Items</h3>
-        {!isReadOnly && (
-          <button className="btn btn-outline" style={{ padding: "4px 10px", fontSize: 11 }} onClick={resetToAI}>
-            <Icon.refresh style={{ width: 12, marginRight: 4 }} /> Reset to AI Predictions
-          </button>
-        )}
+        <h3 className="display-font" style={{ fontSize: 20 }}>Predicted Parts</h3>
+        <button className="btn btn-outline" style={{ padding: "4px 10px", fontSize: 11 }} onClick={resetToAI}>
+          <Icon.refresh style={{ width: 12, marginRight: 4 }} /> Reset to AI Predictions
+        </button>
       </div>
+
+      {/* Warranty notice on edit view */}
+      {!job.chargeApplicable && (
+        <div style={{ padding: "10px 14px", background: "#e0f2fe", borderRadius: 8, border: "1px solid #bae6fd", marginBottom: 16, fontSize: 12, fontWeight: 600, color: "#0369a1" }}>
+          ✅ Under Warranty — Customer will not be charged. Signature confirms work scope only.
+        </div>
+      )}
 
       <div className="card mb-16">
         <div style={{ border: "1px solid var(--border)", borderRadius: "12px", overflow: "hidden" }}>
@@ -1235,53 +1192,44 @@ function PartsView({ job, onDone, setView }) {
                 <th style={{ padding: "12px 16px", fontWeight: 700, fontSize: 12, color: "var(--text-secondary)" }}>STOCK</th>
                 <th style={{ padding: "12px 16px", fontWeight: 700, fontSize: 12, color: "var(--text-secondary)", textAlign: "center", width: 80 }}>QTY</th>
                 <th style={{ padding: "12px 16px", fontWeight: 700, fontSize: 12, color: "var(--text-secondary)", textAlign: "right" }}>COST (RM)</th>
-                {!isReadOnly && <th style={{ padding: "12px 16px", width: 40 }}></th>}
+                <th style={{ padding: "12px 16px", width: 40 }}></th>
               </tr>
             </thead>
             <tbody>
               {currentParts.length === 0 ? (
                 <tr><td colSpan="5" style={{ padding: "32px", textAlign: "center", color: "var(--text-muted)" }}>No parts added.</td></tr>
-              ) : (
-                currentParts.map(p => {
-                  const stock = STOCK_CFG[p.stock] || STOCK_CFG.UNKNOWN;
-                  return (
-                    <tr key={p.partId} style={{ borderTop: "1px solid var(--border)" }}>
-                      <td style={{ padding: "12px 16px" }}>
-                        <div style={{ fontWeight: 600 }}>
-                          {p.name}
-                          {!p.isPredicted && <span style={{ fontSize: 10, background: "var(--bg-subtle)", padding: "2px 6px", borderRadius: 4, marginLeft: 6 }}>MANUAL</span>}
-                        </div>
-                        <div className="mono" style={{ fontSize: 11, color: "var(--text-muted)" }}>{p.partId}</div>
-                      </td>
-                      <td style={{ padding: "12px 16px" }}>
-                        <span className="badge" style={{ color: stock.color, background: stock.bg, fontSize: 10 }}>{stock.label}</span>
-                      </td>
-                      <td style={{ padding: "12px 16px", textAlign: "center" }}>
-                        {isReadOnly ? (
-                          <span style={{ fontWeight: 600 }}>{p.quantity || 1}</span>
-                        ) : (
-                          <input type="number" min="1" value={p.quantity || 1}
-                            onChange={e => updateQuantity(p.partId, e.target.value)}
-                            style={{ width: 50, textAlign: "center", padding: "4px", border: "1px solid var(--border)", borderRadius: 6, fontSize: 13 }}
-                          />
-                        )}
-                      </td>
-                      <td style={{ padding: "12px 16px", textAlign: "right", fontWeight: 600 }}> {(p.cost * (p.quantity || 1)).toFixed(2)}</td>
-                      {!isReadOnly && (
-                        <td style={{ padding: "12px 16px", textAlign: "center" }}>
-                          <button onClick={() => removePart(p.partId)} style={{ background: "none", border: "none", color: "var(--accent)", cursor: "pointer", fontSize: 16 }}>✕</button>
-                        </td>
-                      )}
-                    </tr>
-                  );
-                })
-              )}
+              ) : currentParts.map(p => {
+                const stock = STOCK_CFG[p.stock] || STOCK_CFG.UNKNOWN;
+                return (
+                  <tr key={p.partId} style={{ borderTop: "1px solid var(--border)" }}>
+                    <td style={{ padding: "12px 16px" }}>
+                      <div style={{ fontWeight: 600 }}>
+                        {p.name}
+                        {!p.isPredicted && <span style={{ fontSize: 10, background: "var(--bg-subtle)", padding: "2px 6px", borderRadius: 4, marginLeft: 6 }}>MANUAL</span>}
+                      </div>
+                      <div className="mono" style={{ fontSize: 11, color: "var(--text-muted)" }}>{p.partId}</div>
+                    </td>
+                    <td style={{ padding: "12px 16px" }}>
+                      <span className="badge" style={{ color: stock.color, background: stock.bg, fontSize: 10 }}>{stock.label}</span>
+                    </td>
+                    <td style={{ padding: "12px 16px", textAlign: "center" }}>
+                      <input type="number" min="1" value={p.quantity || 1}
+                        onChange={e => updateQuantity(p.partId, e.target.value)}
+                        style={{ width: 50, textAlign: "center", padding: "4px", border: "1px solid var(--border)", borderRadius: 6, fontSize: 13 }} />
+                    </td>
+                    <td style={{ padding: "12px 16px", textAlign: "right", fontWeight: 600 }}>{(p.cost * (p.quantity || 1)).toFixed(2)}</td>
+                    <td style={{ padding: "12px 16px", textAlign: "center" }}>
+                      <button onClick={() => removePart(p.partId)} style={{ background: "none", border: "none", color: "var(--accent)", cursor: "pointer", fontSize: 16 }}>✕</button>
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
             <tfoot>
               <tr style={{ background: "var(--bg-subtle)", borderTop: "1px solid var(--border)" }}>
                 <td colSpan="3" style={{ padding: "12px 16px", fontWeight: 700, textAlign: "right" }}>Total Estimated Cost</td>
-                <td style={{ padding: "12px 16px", textAlign: "right", fontWeight: 800, color: "var(--brand)", fontSize: 16 }}> {total.toFixed(2)}</td>
-                {!isReadOnly && <td></td>}
+                <td style={{ padding: "12px 16px", textAlign: "right", fontWeight: 800, color: "var(--brand)", fontSize: 16 }}>{total.toFixed(2)}</td>
+                <td></td>
               </tr>
             </tfoot>
           </table>
@@ -1289,49 +1237,28 @@ function PartsView({ job, onDone, setView }) {
       </div>
 
       {/* Add manual part */}
-      {!isReadOnly && (
-        <div className="card mb-20" style={{ borderStyle: "dashed", background: "var(--bg-subtle)" }}>
-          <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 16 }}>Add Additional Spare Part</div>
-          <div style={{ display: "flex", gap: 12, alignItems: "flex-end" }}>
-            <div className="form-group" style={{ flex: 2, marginBottom: 0 }}>
-              <label className="form-label">Part Name</label>
-              <input className="form-control" placeholder="e.g. Copper Pipe" value={newPartName} onChange={e => setNewPartName(e.target.value)} />
-            </div>
-            <div className="form-group" style={{ flex: 1, marginBottom: 0 }}>
-              <label className="form-label">Unit Price (RM)</label>
-              <input className="form-control" type="number" placeholder="0.00" value={newPartPrice} onChange={e => setNewPartPrice(e.target.value)} />
-            </div>
-            <button className="btn btn-primary" onClick={addPart} disabled={!newPartName || !newPartPrice} style={{ height: 42 }}>Add Item</button>
+      <div className="card mb-20" style={{ borderStyle: "dashed", background: "var(--bg-subtle)" }}>
+        <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 16 }}>Add Additional Spare Part</div>
+        <div style={{ display: "flex", gap: 12, alignItems: "flex-end" }}>
+          <div className="form-group" style={{ flex: 2, marginBottom: 0 }}>
+            <label className="form-label">Part Name</label>
+            <input className="form-control" placeholder="e.g. Copper Pipe" value={newPartName} onChange={e => setNewPartName(e.target.value)} />
           </div>
+          <div className="form-group" style={{ flex: 1, marginBottom: 0 }}>
+            <label className="form-label">Unit Price (RM)</label>
+            <input className="form-control" type="number" placeholder="0.00" value={newPartPrice} onChange={e => setNewPartPrice(e.target.value)} />
+          </div>
+          <button className="btn btn-primary" onClick={addPart} disabled={!newPartName || !newPartPrice} style={{ height: 42 }}>Add Item</button>
         </div>
-      )}
+      </div>
 
       <div style={{ display: "flex", gap: 12, flexDirection: "column" }}>
-        {/* ── Active editing states ── */}
-        {job.status === "JOB_STARTED" && (
-          job.chargeApplicable ? (
-            /* Chargeable job → must get customer signature + send quotation email */
-            <button className="btn btn-primary btn-full" onClick={() => setShowQuotation(true)} disabled={currentParts.length === 0}>
-              📋 Get Customer Signature & Send Quotation
-            </button>
-          ) : (
-            /* Warranty job → no payment needed, just request approval directly */
-            <WarrantyPartsApprovalButton job={job} onDone={async () => { await onDone(); setView("detail"); }} />
-          )
-        )}
-
-        {/* ── Status pills for post-submission states ── */}
-        {job.status === "AWAITING_PARTS" && (
-          <div style={{ padding: "14px 16px", background: "#f3e8ff", color: "#7c3aed", borderRadius: "12px", textAlign: "center", fontWeight: 600, fontSize: 13, border: "1px solid #e9d5ff" }}>
-            ⏳ Awaiting manager parts approval
-          </div>
-        )}
-        {(job.status === "PROCEED_JOB" || job.status === "COMPLETED") && (
-          <div style={{ padding: "14px 16px", background: "var(--brand-light)", color: "var(--brand)", borderRadius: "12px", textAlign: "center", fontWeight: 600, fontSize: 13, border: "1px solid var(--brand-mid)" }}>
-            ✅ Parts approved — proceed to complete
-          </div>
-        )}
-
+        <button className="btn btn-primary btn-full" disabled={currentParts.length === 0}
+          onClick={() => setShowQuotation(true)}>
+          {job.chargeApplicable
+            ? "📋 Get Customer Signature & Generate Quotation"
+            : "📋 Get Customer Signature & Generate Quotation"}
+        </button>
         <button className="btn btn-outline btn-full" onClick={() => setView("detail")}>Back to Details</button>
       </div>
     </div>
@@ -1340,17 +1267,12 @@ function PartsView({ job, onDone, setView }) {
 
 
 // ══════════════════════════════════════════════════════════════════════════════
-// COMPLETE JOB VIEW
-// — From v1: full phase flow (input → review → completing → report → done),
-//   ServiceReportSubmitView integration, freshJob reload fix, compensation code
+// COMPLETE JOB VIEW  (V1 phase flow)
 // ══════════════════════════════════════════════════════════════════════════════
 function CompleteJobView({ job, onDone, setView, onBack }) {
-  // Phase: report | confirm | completing | done
-  const [phase, setPhase] = useState("report");
+  const [phase, setPhase] = useState("report"); // report | confirm | completing | done
   const [draftReport, setDraftReport] = useState(null);
   const [result, setResult] = useState(null);
-  const [reportSubmitted, setReportSubmitted] = useState(false);
-  const [freshJob, setFreshJob] = useState(null);
   const [error, setError] = useState(null);
 
   const partsUsed = job.predictedParts || [];
@@ -1360,22 +1282,15 @@ function CompleteJobView({ job, onDone, setView, onBack }) {
     setPhase("completing"); setError(null);
     try {
       const partIds = partsUsed.map(p => p.partId);
-      // 1. Mark ticket as COMPLETED in backend
       try {
         const res = await apiCompleteJob(job.id, partIds, draftReport.workDoneNotes || "Service completed");
         setResult(res);
       } catch (e) {
-        // If the error message indicates it's already completed, we treat it as success for the flow
         if (e.message.toLowerCase().includes("completed") || e.message.toLowerCase().includes("status")) {
           console.warn("Job already completed, proceeding to report submission.");
-        } else {
-          throw e;
-        }
+        } else { throw e; }
       }
-
-      // 2. Submit the service report
       await submitServiceReport(job.id, draftReport);
-
       setPhase("done");
       await onDone();
     } catch (e) {
@@ -1384,7 +1299,6 @@ function CompleteJobView({ job, onDone, setView, onBack }) {
     }
   }
 
-  // ── Completing spinner ───────────────────────────────────────────────────
   if (phase === "completing") {
     return (
       <div style={{ textAlign: "center", padding: "40px 20px", marginTop: 24 }}>
@@ -1395,7 +1309,6 @@ function CompleteJobView({ job, onDone, setView, onBack }) {
     );
   }
 
-  // ── Done state ──────────────────────────────────────────────────────────
   if (phase === "done") {
     return (
       <div className="animate-in" style={{ marginTop: 24, textAlign: "center" }}>
@@ -1420,88 +1333,75 @@ function CompleteJobView({ job, onDone, setView, onBack }) {
     );
   }
 
-  // ── Service report phase ────────────────────────────────────────────────
   if (phase === "report") {
     return (
       <ServiceReportSubmitView
         job={job}
-        onDraftComplete={(data) => {
-          setDraftReport(data);
-          setPhase("confirm");
-        }}
+        onDraftComplete={(data) => { setDraftReport(data); setPhase("confirm"); }}
       />
     );
   }
 
-  // ── Confirm phase ───────────────────────────────────────────────────────
-  if (phase === "confirm") {
-    return (
-      <div className="animate-in" style={{ marginTop: 24 }}>
-        <h3 className="display-font mb-16" style={{ fontSize: 20 }}>Final Confirmation</h3>
-        <p style={{ fontSize: 14, color: "var(--text-secondary)", marginBottom: 20 }}>
-          The service report has been drafted. Review the job summary below and confirm to officially close this ticket.
-        </p>
-        {error && <ErrorBanner message={error} />}
+  // confirm phase
+  return (
+    <div className="animate-in" style={{ marginTop: 24 }}>
+      <h3 className="display-font mb-16" style={{ fontSize: 20 }}>Final Confirmation</h3>
+      <p style={{ fontSize: 14, color: "var(--text-secondary)", marginBottom: 20 }}>
+        Review the job summary below and confirm to officially close this ticket.
+      </p>
+      {error && <ErrorBanner message={error} />}
 
-        {/* Job summary */}
-        <div className="card mb-16" style={{ background: "var(--bg-subtle)", borderStyle: "dashed" }}>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
-            <div><div className="stat-label" style={{ marginTop: 0 }}>Customer</div><div style={{ fontWeight: 700 }}>{job.customerName}</div></div>
-            <div><div className="stat-label" style={{ marginTop: 0 }}>Ticket ID</div><div className="mono" style={{ fontWeight: 700, color: "var(--brand)" }}>{job.id}</div></div>
-            <div><div className="stat-label" style={{ marginTop: 0 }}>Product</div><div style={{ fontWeight: 600 }}>{job.productModel}</div></div>
-            <div><div className="stat-label" style={{ marginTop: 0 }}>Fault</div><div style={{ fontWeight: 600, color: "var(--accent)" }}>{job.faultType || "Not specified"}</div></div>
-          </div>
-        </div>
-
-        {partsUsed.length > 0 && (
-          <div className="card mb-16">
-            <div className="stat-label" style={{ marginTop: 0, marginBottom: 8 }}>Parts to Install</div>
-            <div style={{ border: "1px solid var(--border)", borderRadius: 8, overflow: "hidden" }}>
-              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
-                <tbody>
-                  {partsUsed.map(p => (
-                    <tr key={p.partId} style={{ borderTop: "1px solid var(--border)" }}>
-                      <td style={{ padding: "8px 12px" }}>{p.name} <span className="mono" style={{ fontSize: 10, color: "var(--text-muted)" }}>({p.partId})</span></td>
-                      <td style={{ padding: "8px 12px", textAlign: "right", fontWeight: 600 }}>RM {(p.cost || 0).toFixed(2)}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        )}
-
-        <div style={{ padding: "14px 16px", background: "var(--brand-light)", borderRadius: 10, border: "1px solid var(--brand-mid)", marginBottom: 20 }}>
-          <p style={{ fontSize: 13, color: "var(--brand)", fontWeight: 600, margin: 0 }}>
-            ✓ Service Report Ready
-          </p>
-          <p style={{ fontSize: 12, color: "var(--text-secondary)", marginTop: 4 }}>
-            Notes: "{draftReport ? draftReport.workDoneNotes.substring(0, 100) : ""}{draftReport && draftReport.workDoneNotes.length > 100 ? "..." : ""}"
-          </p>
-        </div>
-
-        <div style={{ padding: "14px 16px", background: "var(--accent-light)", borderRadius: 10, border: "1px solid rgba(224,92,42,0.2)", marginBottom: 20 }}>
-          <p style={{ fontSize: 13, color: "var(--accent)", fontWeight: 600, margin: 0 }}>
-            ⚠️ Confirming will officially close ticket {job.id}.
-          </p>
-        </div>
-
-        <div style={{ display: "flex", gap: 12 }}>
-          <button className="btn btn-primary" style={{ flex: 1 }} onClick={finish}>
-            Confirm & Close Ticket
-          </button>
-          <button className="btn btn-outline" onClick={() => setPhase("report")}>Edit Report</button>
+      <div className="card mb-16" style={{ background: "var(--bg-subtle)", borderStyle: "dashed" }}>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+          <div><div className="stat-label" style={{ marginTop: 0 }}>Customer</div><div style={{ fontWeight: 700 }}>{job.customerName}</div></div>
+          <div><div className="stat-label" style={{ marginTop: 0 }}>Ticket ID</div><div className="mono" style={{ fontWeight: 700, color: "var(--brand)" }}>{job.id}</div></div>
+          <div><div className="stat-label" style={{ marginTop: 0 }}>Product</div><div style={{ fontWeight: 600 }}>{job.productModel}</div></div>
+          <div><div className="stat-label" style={{ marginTop: 0 }}>Fault</div><div style={{ fontWeight: 600, color: "var(--accent)" }}>{job.faultType || "Not specified"}</div></div>
         </div>
       </div>
-    );
-  }
+
+      {partsUsed.length > 0 && (
+        <div className="card mb-16">
+          <div className="stat-label" style={{ marginTop: 0, marginBottom: 8 }}>Parts to Install</div>
+          <div style={{ border: "1px solid var(--border)", borderRadius: 8, overflow: "hidden" }}>
+            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+              <tbody>
+                {partsUsed.map(p => (
+                  <tr key={p.partId} style={{ borderTop: "1px solid var(--border)" }}>
+                    <td style={{ padding: "8px 12px" }}>{p.name} <span className="mono" style={{ fontSize: 10, color: "var(--text-muted)" }}>({p.partId})</span></td>
+                    <td style={{ padding: "8px 12px", textAlign: "right", fontWeight: 600 }}>RM {(p.cost || 0).toFixed(2)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      <div style={{ padding: "14px 16px", background: "var(--brand-light)", borderRadius: 10, border: "1px solid var(--brand-mid)", marginBottom: 12 }}>
+        <p style={{ fontSize: 13, color: "var(--brand)", fontWeight: 600, margin: 0 }}>✓ Service Report Ready</p>
+        <p style={{ fontSize: 12, color: "var(--text-secondary)", marginTop: 4 }}>
+          Notes: "{draftReport ? draftReport.workDoneNotes.substring(0, 100) : ""}{draftReport && draftReport.workDoneNotes.length > 100 ? "..." : ""}"
+        </p>
+      </div>
+
+      <div style={{ padding: "14px 16px", background: "var(--accent-light)", borderRadius: 10, border: "1px solid rgba(224,92,42,0.2)", marginBottom: 20 }}>
+        <p style={{ fontSize: 13, color: "var(--accent)", fontWeight: 600, margin: 0 }}>
+          ⚠️ Confirming will officially close ticket {job.id}.
+        </p>
+      </div>
+
+      <div style={{ display: "flex", gap: 12 }}>
+        <button className="btn btn-primary" style={{ flex: 1 }} onClick={finish}>Confirm &amp; Close Ticket</button>
+        <button className="btn btn-outline" onClick={() => setPhase("report")}>Edit Report</button>
+      </div>
+    </div>
+  );
 }
 
 
 // ══════════════════════════════════════════════════════════════════════════════
 // ESCALATION MONITOR PAGE
-// — From v1: 3-stat grid, PARTS PENDING type support
-// — From v2: "Operations Watch" title merged as subtitle
 // ══════════════════════════════════════════════════════════════════════════════
 function EscalationPage() {
   const [data, setData] = useState({ escalations: [], breachCount: 0, reminderCount: 0 });
@@ -1518,10 +1418,10 @@ function EscalationPage() {
   useEffect(() => { load(); }, [load]);
 
   function EscItem({ e }) {
-    const isBreach = e.type === "BREACH" || e.type === "SLA_BREACH";
+    const isBreach  = e.type === "BREACH" || e.type === "SLA_BREACH";
     const isPending = e.type === "PENDING_APPROVAL";
     const color = isBreach ? "var(--accent)" : isPending ? "#7c3aed" : "var(--brand)";
-    const bg = isBreach ? "var(--accent-light)" : isPending ? "#f3e8ff" : "var(--brand-light)";
+    const bg    = isBreach ? "var(--accent-light)" : isPending ? "#f3e8ff" : "var(--brand-light)";
     const label = isBreach ? "SLA BREACH" : isPending ? "PARTS PENDING" : "SLA WARNING";
 
     return (
@@ -1576,21 +1476,17 @@ function EscalationPage() {
 
 // ══════════════════════════════════════════════════════════════════════════════
 // ROOT APP
-// — From v2: role-based login (technician | admin), handleLogout,
-//   URL management, hooks-before-returns rule
-// — From v1: MyRatings nav tab, footer
 // ══════════════════════════════════════════════════════════════════════════════
 export default function App() {
-  const [userRole, setUserRole] = useState(null); // 'technician' | 'admin' | null
+  const [userRole, setUserRole] = useState(null);
   const [jobs, setJobs] = useState([]);
   const [stats, setStats] = useState({ total: 0, active: 0, breached: 0, completed: 0 });
   const [selectedJobId, setSelectedJobId] = useState(null);
-  const [view, setView] = useState("jobs"); // jobs | alerts | ratings
+  const [view, setView] = useState("jobs");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [alertBadge, setAlertBadge] = useState(0);
 
-  // All hooks declared before any conditional returns (v2 fix)
   const loadJobs = useCallback(async () => {
     setLoading(true); setError(null);
     try {
@@ -1602,10 +1498,8 @@ export default function App() {
   }, []);
 
   const loadBadges = useCallback(async () => {
-    try {
-      const esc = await fetchEscalations();
-      setAlertBadge(esc.breachCount + esc.reminderCount);
-    } catch (_) { /* silent */ }
+    try { const esc = await fetchEscalations(); setAlertBadge(esc.breachCount + esc.reminderCount); }
+    catch (_) { /* silent */ }
   }, []);
 
   useEffect(() => {
@@ -1614,11 +1508,7 @@ export default function App() {
 
   const handleLogin = (role) => {
     setUserRole(role);
-    if (role === "admin") {
-      window.history.replaceState({}, "", "/admin");
-    } else {
-      window.history.replaceState({}, "", "/");
-    }
+    window.history.replaceState({}, "", role === "admin" ? "/admin" : "/");
   };
 
   const handleLogout = () => {
@@ -1626,12 +1516,8 @@ export default function App() {
     window.history.replaceState({}, "", "/");
   };
 
-  // Show admin dashboard
-  if (userRole === "admin") {
-    return <AdminDashboard onLogout={handleLogout} />;
-  }
-
-  if (!userRole) return <LoginPage onLogin={handleLogin} />;
+  if (userRole === "admin")  return <AdminDashboard onLogout={handleLogout} />;
+  if (!userRole)             return <LoginPage onLogin={handleLogin} />;
 
   function NavBtn({ id, label, badge }) {
     const active = view === id && !selectedJobId;
@@ -1660,13 +1546,11 @@ export default function App() {
           <div className="nav-logo" onClick={() => { setSelectedJobId(null); setView("jobs"); }} style={{ cursor: "pointer" }}>
             <img src="/fiamma_logo.png" alt="Fiamma" style={{ height: 36 }} />
           </div>
-
           <nav style={{ display: "flex", gap: 32, marginLeft: 48, flex: 1 }}>
-            <NavBtn id="jobs" label="My Jobs" badge={0} />
-            <NavBtn id="alerts" label="Alerts" badge={alertBadge} />
-            <NavBtn id="ratings" label="My Ratings" badge={0} />
+            <NavBtn id="jobs"    label="My Jobs"     badge={0} />
+            <NavBtn id="alerts"  label="Alerts"      badge={alertBadge} />
+            <NavBtn id="ratings" label="My Ratings"  badge={0} />
           </nav>
-
           <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
             <div className="badge" style={{ background: "var(--brand-light)", color: "var(--brand)", textTransform: "none", borderRadius: 8 }}>
               <span style={{ opacity: 0.6, marginRight: 4 }}>ID:</span> TECH-001

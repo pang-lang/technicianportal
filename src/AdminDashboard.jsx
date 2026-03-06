@@ -201,9 +201,15 @@ function PartsApprovalTab({ partsData: stats }) {
             <span className="badge" style={{ color: warrantyOk ? "var(--brand)" : "var(--accent)", background: warrantyOk ? "var(--brand-light)" : "var(--accent-light)" }}>
               {warrantyOk ? "Under Warranty" : "Warranty Expired"}
             </span>
-            <span className="badge" style={{ color: costHigh ? "var(--accent)" : "var(--brand)", background: costHigh ? "var(--accent-light)" : "var(--brand-light)", fontSize: 13, fontWeight: 800 }}>
-              RM {a.totalCost.toFixed(2)}
-            </span>
+            {warrantyOk ? (
+              <span className="badge" style={{ color: "#16a34a", background: "#dcfce7", fontSize: 13, fontWeight: 800 }}>
+                RM 0.00 — Covered
+              </span>
+            ) : (
+              <span className="badge" style={{ color: costHigh ? "var(--accent)" : "var(--brand)", background: costHigh ? "var(--accent-light)" : "var(--brand-light)", fontSize: 13, fontWeight: 800 }}>
+                RM {a.totalCost.toFixed(2)}
+              </span>
+            )}
           </div>
         </div>
 
@@ -222,7 +228,9 @@ function PartsApprovalTab({ partsData: stats }) {
               <tr style={{ background: "var(--bg-subtle)" }}>
                 <th style={{ padding: "10px 14px", textAlign: "left", fontWeight: 700, fontSize: 11, color: "var(--text-secondary)" }}>PART</th>
                 <th style={{ padding: "10px 14px", textAlign: "left", fontWeight: 700, fontSize: 11, color: "var(--text-secondary)" }}>STOCK</th>
-                <th style={{ padding: "10px 14px", textAlign: "right", fontWeight: 700, fontSize: 11, color: "var(--text-secondary)" }}>COST</th>
+                <th style={{ padding: "10px 14px", textAlign: "right", fontWeight: 700, fontSize: 11, color: "var(--text-secondary)" }}>
+                  {warrantyOk ? "COST (COVERED)" : "COST"}
+                </th>
               </tr>
             </thead>
             <tbody>
@@ -237,7 +245,16 @@ function PartsApprovalTab({ partsData: stats }) {
                     <td style={{ padding: "10px 14px" }}>
                       <span className="badge" style={{ color: stock.color, background: stock.bg, fontSize: 10 }}>{stock.label}</span>
                     </td>
-                    <td style={{ padding: "10px 14px", textAlign: "right", fontWeight: 600 }}>RM {Number(p.cost || 0).toFixed(2)}</td>
+                    <td style={{ padding: "10px 14px", textAlign: "right", fontWeight: 600 }}>
+                      {warrantyOk ? (
+                        <span>
+                          <span style={{ textDecoration: "line-through", opacity: 0.4, marginRight: 6 }}>RM {Number(p.cost || 0).toFixed(2)}</span>
+                          <span style={{ color: "#16a34a" }}>RM 0.00</span>
+                        </span>
+                      ) : (
+                        `RM ${Number(p.cost || 0).toFixed(2)}`
+                      )}
+                    </td>
                   </tr>
                 );
               })}
@@ -432,7 +449,14 @@ function ApprovalHistorySection() {
                               ))}
                             </td>
                             <td style={{ padding: "10px 14px", textAlign: "right", fontWeight: 700, fontSize: 12, color: isApproved ? "var(--brand)" : "var(--text-muted)" }}>
-                              RM {h.totalCost.toFixed(2)}
+                              {warrantyOk ? (
+                                <span>
+                                  <span style={{ textDecoration: "line-through", opacity: 0.4, fontSize: 10, display: "block" }}>RM {h.totalCost.toFixed(2)}</span>
+                                  <span style={{ color: "#16a34a" }}>RM 0.00</span>
+                                </span>
+                              ) : (
+                                `RM ${h.totalCost.toFixed(2)}`
+                              )}
                             </td>
                             <td style={{ padding: "10px 14px" }}>
                               <span className="badge" style={{ color: warrantyOk ? "var(--brand)" : "var(--accent)", background: warrantyOk ? "var(--brand-light)" : "var(--accent-light)", fontSize: 9 }}>
