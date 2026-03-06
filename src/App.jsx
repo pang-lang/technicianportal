@@ -49,7 +49,7 @@ const STATUS_CFG = {
   PENDING_ACCEPTANCE: { label: "Pending Acceptance", color: "#b45309", bg: "#fef3c7" },
   ACCEPTED:           { label: "Accepted", color: "#0369a1", bg: "#e0f2fe" },
   APPOINTMENT_BOOKED: { label: "Appointment Booked", color: "#0d9488", bg: "#ccfbf1" },
-  ASSIGNED:           { label: "Assigned", color: "#1d5fb3", bg: "#e8f0fc" },
+  ASSIGNED:           { label: "Pending Acceptance", color: "#b45309", bg: "#fef3c7" }, // legacy — treated as PENDING_ACCEPTANCE
   JOB_STARTED: { label: "Job Started", color: "#e05c2a", bg: "#fdf0eb" },
   AWAITING_PARTS: { label: "Awaiting Parts", color: "#7c3aed", bg: "#f3e8ff" },
   PROCEED_JOB: { label: "Proceed Job", color: "#0891b2", bg: "#e0f7fa" },
@@ -400,8 +400,8 @@ function JobDetailPage({ jobId, onBack, onJobMutated }) {
         <div className="card">
           <h3 className="display-font mb-16" style={{ fontSize: 20 }}>Actions</h3>
 
-          {/* ── PENDING_ACCEPTANCE: Accept or Reject ── */}
-          {job.status === "PENDING_ACCEPTANCE" && view === "detail" && (
+          {/* ── PENDING_ACCEPTANCE (or legacy ASSIGNED): Accept or Reject ── */}
+          {(job.status === "PENDING_ACCEPTANCE" || job.status === "ASSIGNED") && view === "detail" && (
             <AcceptRejectView job={job} onDone={reloadAfterMutation} />
           )}
 
@@ -415,16 +415,7 @@ function JobDetailPage({ jobId, onBack, onJobMutated }) {
             <AppointmentBookedView job={job} onDone={reloadAfterMutation} />
           )}
 
-          {/* ── ASSIGNED: Start Job (legacy) ── */}
-          {job.status === "ASSIGNED" && view === "detail" && (
-            <div style={{ display: "flex", gap: 12 }}>
-              <button className="btn btn-primary" style={{ flex: 1 }} onClick={async () => {
-                await updateJobStatus(job.id, "JOB_STARTED");
-                await reloadAfterMutation();
-                setView("fault");
-              }}>Start Service Job</button>
-            </div>
-          )}
+
 
           {/* ── JOB_STARTED without fault: Log fault ── */}
           {job.status === "JOB_STARTED" && view === "detail" && !job.faultType && (
