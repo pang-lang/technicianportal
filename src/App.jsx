@@ -12,6 +12,8 @@ import {
   fetchEscalations,
   submitQuotation as apiSubmitQuotation,
   submitServiceReport,
+  acceptOrRejectTicket as apiAcceptOrReject,
+  bookAppointment as apiBookAppointment,
 } from "./api";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -44,7 +46,10 @@ function slaPercent(createdAt, deadlineAt) {
 
 // ── Status / urgency / stock configs ─────────────────────────────────────────
 const STATUS_CFG = {
-  ASSIGNED: { label: "Assigned", color: "#1d5fb3", bg: "#e8f0fc" },
+  PENDING_ACCEPTANCE: { label: "Pending Acceptance", color: "#b45309", bg: "#fef3c7" },
+  ACCEPTED:           { label: "Accepted", color: "#0369a1", bg: "#e0f2fe" },
+  APPOINTMENT_BOOKED: { label: "Appointment Booked", color: "#0d9488", bg: "#ccfbf1" },
+  ASSIGNED:           { label: "Assigned", color: "#1d5fb3", bg: "#e8f0fc" },
   JOB_STARTED: { label: "Job Started", color: "#e05c2a", bg: "#fdf0eb" },
   AWAITING_PARTS: { label: "Awaiting Parts", color: "#7c3aed", bg: "#f3e8ff" },
   PROCEED_JOB: { label: "Proceed Job", color: "#0891b2", bg: "#e0f7fa" },
@@ -177,9 +182,9 @@ function LoginPage({ onLogin }) {
 // — From v2: header title "Daily Operations", clock icon in SLA row
 // ══════════════════════════════════════════════════════════════════════════════
 function MyJobsPage({ jobs, stats, loading, error, onSelectJob, onRetry }) {
-  const active = jobs.filter(j => j.status !== "COMPLETED" && j.status !== "CANCELLED");
+  const active = jobs.filter(j => !["COMPLETED","CANCELLED","REJECTED"].includes(j.status));
   const done = jobs.filter(j => j.status === "COMPLETED");
-  const cancelled = jobs.filter(j => j.status === "CANCELLED");
+  const cancelled = jobs.filter(j => j.status === "CANCELLED" || j.status === "REJECTED");
 
   function JobItem({ job }) {
     const urg = URGENCY_CFG[job.urgencyLevel] || URGENCY_CFG.STANDARD;
@@ -318,13 +323,15 @@ function JobDetailPage({ jobId, onBack, onJobMutated }) {
 
   // Full timeline including PROCEED_JOB (from v1)
   const STEPS = [
-    { key: "ASSIGNED", label: "Ticket Assigned", icon: <Icon.user /> },
-    { key: "JOB_STARTED", label: "Job Started", icon: <Icon.tool /> },
-    { key: "AWAITING_PARTS", label: "Awaiting Parts", icon: <Icon.package /> },
-    { key: "PROCEED_JOB", label: "Parts Approved", icon: <Icon.approve /> },
-    { key: "COMPLETED", label: "Completed", icon: <Icon.check /> },
+    { key: "PENDING_ACCEPTANCE", label: "New Ticket",         icon: <Icon.user /> },
+    { key: "ACCEPTED",           label: "Accepted",           icon: <Icon.check /> },
+    { key: "APPOINTMENT_BOOKED", label: "Appointment Booked", icon: <Icon.clock /> },
+    { key: "JOB_STARTED",        label: "Job Started",        icon: <Icon.tool /> },
+    { key: "AWAITING_PARTS",     label: "Awaiting Parts",     icon: <Icon.package /> },
+    { key: "PROCEED_JOB",        label: "Parts Approved",     icon: <Icon.approve /> },
+    { key: "COMPLETED",          label: "Completed",          icon: <Icon.check /> },
   ];
-  const ORDER = ["ASSIGNED", "JOB_STARTED", "AWAITING_PARTS", "PROCEED_JOB", "COMPLETED"];
+  const ORDER = ["PENDING_ACCEPTANCE","ACCEPTED","APPOINTMENT_BOOKED","JOB_STARTED","AWAITING_PARTS","PROCEED_JOB","COMPLETED"];
   const curIdx = ORDER.indexOf(job.status);
 
   return (
@@ -393,7 +400,22 @@ function JobDetailPage({ jobId, onBack, onJobMutated }) {
         <div className="card">
           <h3 className="display-font mb-16" style={{ fontSize: 20 }}>Actions</h3>
 
-          {/* ── ASSIGNED: Start Job ── */}
+          {/* ── PENDING_ACCEPTANCE: Accept or Reject ── */}
+          {job.status === "PENDING_ACCEPTANCE" && view === "detail" && (
+            <AcceptRejectView job={job} onDone={reloadAfterMutation} />
+          )}
+
+          {/* ── ACCEPTED: Contact customer via WhatsApp/call, book appointment ── */}
+          {job.status === "ACCEPTED" && view === "detail" && (
+            <BookAppointmentView job={job} onDone={reloadAfterMutation} />
+          )}
+
+          {/* ── APPOINTMENT_BOOKED: On appointment day, start the job ── */}
+          {job.status === "APPOINTMENT_BOOKED" && view === "detail" && (
+            <AppointmentBookedView job={job} onDone={reloadAfterMutation} />
+          )}
+
+          {/* ── ASSIGNED: Start Job (legacy) ── */}
           {job.status === "ASSIGNED" && view === "detail" && (
             <div style={{ display: "flex", gap: 12 }}>
               <button className="btn btn-primary" style={{ flex: 1 }} onClick={async () => {
@@ -401,7 +423,6 @@ function JobDetailPage({ jobId, onBack, onJobMutated }) {
                 await reloadAfterMutation();
                 setView("fault");
               }}>Start Service Job</button>
-              <button className="btn btn-outline"><Icon.phone style={{ width: 16 }} /> Contact</button>
             </div>
           )}
 
@@ -520,6 +541,321 @@ function JobDetailPage({ jobId, onBack, onJobMutated }) {
           </div>
         </div>
       </div>
+    </div>
+  );
+}
+
+
+// ══════════════════════════════════════════════════════════════════════════════
+// ACCEPT / REJECT VIEW
+// Shown when status = PENDING_ACCEPTANCE. Hafiz can accept or reject.
+// ══════════════════════════════════════════════════════════════════════════════
+function AcceptRejectView({ job, onDone }) {
+  const [acting, setActing] = useState(null); // "accepting" | "rejecting"
+  const [showRejectForm, setShowRejectForm] = useState(false);
+  const [rejectReason, setRejectReason] = useState("");
+  const [error, setError] = useState(null);
+
+  async function handleAccept() {
+    setActing("accepting"); setError(null);
+    try {
+      await apiAcceptOrReject(job.id, true);
+      await onDone();
+    } catch (e) { setError(e.message); setActing(null); }
+  }
+
+  async function handleReject() {
+    if (!rejectReason.trim()) { setError("Please provide a reason for rejection."); return; }
+    setActing("rejecting"); setError(null);
+    try {
+      await apiAcceptOrReject(job.id, false, rejectReason);
+      await onDone();
+    } catch (e) { setError(e.message); setActing(null); }
+  }
+
+  return (
+    <div className="animate-in">
+      {/* New ticket banner */}
+      <div style={{ padding: "16px 20px", background: "#fef3c7", borderRadius: 12, border: "1px solid #fde68a", marginBottom: 20 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
+          <div style={{ width: 32, height: 32, background: "#b45309", color: "#fff", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16 }}>
+            📋
+          </div>
+          <div style={{ fontWeight: 700, color: "#92400e", fontSize: 15 }}>New Ticket — Pending Your Acceptance</div>
+        </div>
+        <p style={{ fontSize: 13, color: "#78350f", margin: 0 }}>
+          Review the job details and accept or reject this ticket.
+          If accepted, you will contact the customer to book an appointment.
+        </p>
+      </div>
+
+      {error && <ErrorBanner message={error} />}
+
+      {!showRejectForm ? (
+        <div style={{ display: "flex", gap: 12 }}>
+          <button
+            className="btn btn-primary"
+            style={{ flex: 1 }}
+            disabled={!!acting}
+            onClick={handleAccept}
+          >
+            {acting === "accepting" ? "Accepting..." : "✓ Accept Ticket"}
+          </button>
+          <button
+            className="btn btn-outline"
+            style={{ flex: 1, color: "var(--accent)", borderColor: "var(--accent)" }}
+            disabled={!!acting}
+            onClick={() => setShowRejectForm(true)}
+          >
+            ✗ Reject Ticket
+          </button>
+        </div>
+      ) : (
+        <div className="card" style={{ border: "1px solid rgba(224,92,42,0.3)", background: "var(--accent-light)" }}>
+          <div style={{ fontWeight: 700, color: "var(--accent)", marginBottom: 12 }}>Reason for Rejection</div>
+          <textarea
+            className="form-control"
+            style={{ minHeight: 80, marginBottom: 12 }}
+            placeholder="e.g. Outside service area, scheduling conflict..."
+            value={rejectReason}
+            onChange={e => setRejectReason(e.target.value)}
+          />
+          <div style={{ display: "flex", gap: 10 }}>
+            <button
+              className="btn btn-outline"
+              style={{ flex: 1, color: "var(--accent)", borderColor: "var(--accent)" }}
+              disabled={acting === "rejecting"}
+              onClick={handleReject}
+            >
+              {acting === "rejecting" ? "Rejecting..." : "Confirm Reject"}
+            </button>
+            <button className="btn btn-outline" onClick={() => { setShowRejectForm(false); setError(null); }}>
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+
+// ══════════════════════════════════════════════════════════════════════════════
+// BOOK APPOINTMENT VIEW
+// Shown when status = ACCEPTED. Hafiz contacts customer and books the date.
+// ══════════════════════════════════════════════════════════════════════════════
+function BookAppointmentView({ job, onDone }) {
+  const [appointmentDate, setAppointmentDate] = useState("");
+  const [appointmentTime, setAppointmentTime] = useState("09:00");
+  const [notes, setNotes] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState(null);
+
+  // Build WhatsApp deep link — uses customer email as fallback if no phone
+  const waMessage = encodeURIComponent(
+    `Hi ${job.customerName}, this is Hafiz from Fiamma service team. ` +
+    `I'm reaching out regarding your service ticket ${job.id} for your ${job.productModel}. ` +
+    `I'd like to schedule an appointment — when would be convenient for you?`
+  );
+  // Use a placeholder number — replace with actual customer phone when available
+  const customerPhone = job.customerPhone ? job.customerPhone.replace(/\D/g, "") : "";
+  const waLink = customerPhone
+    ? `https://wa.me/60${customerPhone}?text=${waMessage}`
+    : `https://wa.me/?text=${waMessage}`;
+
+  async function handleBook() {
+    if (!appointmentDate) { setError("Please select an appointment date."); return; }
+    setSubmitting(true); setError(null);
+    try {
+      const isoDate = `${appointmentDate}T${appointmentTime}:00`;
+      await apiBookAppointment(job.id, isoDate, notes);
+      await onDone();
+    } catch (e) { setError(e.message); setSubmitting(false); }
+  }
+
+  // Min date = today
+  const today = new Date().toISOString().split("T")[0];
+
+  return (
+    <div className="animate-in">
+      {/* Status banner */}
+      <div style={{ padding: "16px 20px", background: "#e0f2fe", borderRadius: 12, border: "1px solid #bae6fd", marginBottom: 20 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
+          <div style={{ width: 32, height: 32, background: "#0369a1", color: "#fff", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16 }}>
+            ✓
+          </div>
+          <div style={{ fontWeight: 700, color: "#0c4a6e", fontSize: 15 }}>Ticket Accepted — Book Appointment</div>
+        </div>
+        <p style={{ fontSize: 13, color: "#075985", margin: 0 }}>
+          Contact the customer via WhatsApp or phone to confirm a suitable date, then book the appointment below.
+        </p>
+      </div>
+
+      {/* Contact customer buttons */}
+      <div style={{ display: "flex", gap: 10, marginBottom: 20 }}>
+        <a
+          href={waLink}
+          target="_blank"
+          rel="noreferrer"
+          style={{
+            flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
+            padding: "11px 16px", borderRadius: 10, background: "#25D366", color: "#fff",
+            fontWeight: 700, fontSize: 13, textDecoration: "none", border: "none",
+          }}
+        >
+          <span style={{ fontSize: 18 }}>💬</span> WhatsApp Customer
+        </a>
+        {customerPhone && (
+          <a
+            href={`tel:+60${customerPhone}`}
+            style={{
+              flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
+              padding: "11px 16px", borderRadius: 10, background: "var(--bg-subtle)", color: "var(--text-primary)",
+              fontWeight: 700, fontSize: 13, textDecoration: "none", border: "1px solid var(--border)",
+            }}
+          >
+            📞 Call Customer
+          </a>
+        )}
+      </div>
+
+      {/* Customer info */}
+      <div className="card mb-16" style={{ background: "var(--bg-subtle)" }}>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, fontSize: 13 }}>
+          <div><span style={{ color: "var(--text-muted)", fontSize: 11 }}>CUSTOMER</span><div style={{ fontWeight: 600 }}>{job.customerName}</div></div>
+          <div><span style={{ color: "var(--text-muted)", fontSize: 11 }}>EMAIL</span><div style={{ fontWeight: 600 }}>{job.customerEmail}</div></div>
+          <div><span style={{ color: "var(--text-muted)", fontSize: 11 }}>PRODUCT</span><div style={{ fontWeight: 600 }}>{job.productModel}</div></div>
+          <div><span style={{ color: "var(--text-muted)", fontSize: 11 }}>ISSUE</span><div style={{ fontWeight: 600 }}>{job.subject}</div></div>
+        </div>
+      </div>
+
+      {/* Appointment date picker */}
+      <div className="card">
+        <div style={{ fontWeight: 700, marginBottom: 16, fontSize: 15 }}>📅 Book Appointment</div>
+        {error && <ErrorBanner message={error} />}
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 12 }}>
+          <div className="form-group" style={{ marginBottom: 0 }}>
+            <label className="form-label">Date <span style={{ color: "var(--accent)" }}>*</span></label>
+            <input
+              type="date"
+              className="form-control"
+              min={today}
+              value={appointmentDate}
+              onChange={e => setAppointmentDate(e.target.value)}
+            />
+          </div>
+          <div className="form-group" style={{ marginBottom: 0 }}>
+            <label className="form-label">Time</label>
+            <select className="form-control" value={appointmentTime} onChange={e => setAppointmentTime(e.target.value)}>
+              {["08:00","09:00","10:00","11:00","12:00","13:00","14:00","15:00","16:00","17:00"].map(t => (
+                <option key={t} value={t}>{t}</option>
+              ))}
+            </select>
+          </div>
+        </div>
+        <div className="form-group" style={{ marginBottom: 12 }}>
+          <label className="form-label">Notes (optional)</label>
+          <input
+            className="form-control"
+            placeholder="e.g. Customer prefers morning, side gate entry..."
+            value={notes}
+            onChange={e => setNotes(e.target.value)}
+          />
+        </div>
+        <button
+          className="btn btn-primary btn-full"
+          disabled={!appointmentDate || submitting}
+          onClick={handleBook}
+        >
+          {submitting ? "Booking..." : "Confirm Appointment"}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+
+// ══════════════════════════════════════════════════════════════════════════════
+// APPOINTMENT BOOKED VIEW
+// Shown when status = APPOINTMENT_BOOKED. Shows the date and a "Start Job" button.
+// ══════════════════════════════════════════════════════════════════════════════
+function AppointmentBookedView({ job, onDone }) {
+  const [starting, setStarting] = useState(false);
+  const [error, setError] = useState(null);
+
+  const apptDate = job.appointmentDate
+    ? new Date(job.appointmentDate).toLocaleString("en-MY", {
+        weekday: "long", day: "2-digit", month: "long", year: "numeric",
+        hour: "2-digit", minute: "2-digit",
+      })
+    : "—";
+
+  // Check if today is on or after appointment date
+  const canStart = !job.appointmentDate || new Date() >= new Date(job.appointmentDate);
+
+  async function handleStartJob() {
+    setStarting(true); setError(null);
+    try {
+      await updateJobStatus(job.id, "JOB_STARTED", "TECH-001", "Technician arrived on-site. Job started.");
+      await onDone();
+    } catch (e) { setError(e.message); setStarting(false); }
+  }
+
+  // WhatsApp reminder link
+  const waMessage = encodeURIComponent(
+    `Hi ${job.customerName}, this is a reminder from Fiamma that your appliance service appointment is scheduled for ${apptDate}. Our technician will arrive at your location. Thank you!`
+  );
+  const customerPhone = job.customerPhone ? job.customerPhone.replace(/\D/g, "") : "";
+  const waLink = customerPhone ? `https://wa.me/60${customerPhone}?text=${waMessage}` : `https://wa.me/?text=${waMessage}`;
+
+  return (
+    <div className="animate-in">
+      {/* Appointment confirmed banner */}
+      <div style={{ padding: "16px 20px", background: "#ccfbf1", borderRadius: 12, border: "1px solid #99f6e4", marginBottom: 20 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
+          <div style={{ width: 32, height: 32, background: "#0d9488", color: "#fff", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16 }}>
+            📅
+          </div>
+          <div style={{ fontWeight: 700, color: "#134e4a", fontSize: 15 }}>Appointment Confirmed</div>
+        </div>
+        <div style={{ fontSize: 15, fontWeight: 700, color: "#0f766e", marginBottom: 4 }}>{apptDate}</div>
+        <p style={{ fontSize: 13, color: "#115e59", margin: 0 }}>
+          {canStart
+            ? "It's time! You can now start the job."
+            : "On the appointment day, tap 'Start Job' to begin the service."}
+        </p>
+      </div>
+
+      {error && <ErrorBanner message={error} />}
+
+      {/* Send reminder button */}
+      <a
+        href={waLink}
+        target="_blank"
+        rel="noreferrer"
+        style={{
+          display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
+          padding: "10px 16px", borderRadius: 10, background: "#25D366", color: "#fff",
+          fontWeight: 700, fontSize: 13, textDecoration: "none", marginBottom: 12,
+        }}
+      >
+        <span style={{ fontSize: 16 }}>💬</span> Send Appointment Reminder via WhatsApp
+      </a>
+
+      {/* Start job button */}
+      <button
+        className="btn btn-primary btn-full"
+        disabled={starting}
+        onClick={handleStartJob}
+        style={{ opacity: canStart ? 1 : 0.65 }}
+      >
+        {starting ? "Starting..." : "🔧 Start Job"}
+      </button>
+      {!canStart && (
+        <p style={{ fontSize: 12, color: "var(--text-muted)", textAlign: "center", marginTop: 8 }}>
+          Button will activate on appointment date, but you can start early if needed.
+        </p>
+      )}
     </div>
   );
 }

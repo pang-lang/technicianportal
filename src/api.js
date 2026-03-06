@@ -91,6 +91,8 @@ function normalizeJobDetail(d) {
         // Added for service report review
         quotation: d.quotation || null,
         report: d.report || null,
+        appointmentDate: d.appointment_date || null,
+        customerPhone: d.customer_phone || "",
     };
 }
 
@@ -374,4 +376,32 @@ export async function fetchApprovalHistory() {
         approvedCount: d.approved_count,
         rejectedCount: d.rejected_count,
     };
+}
+// ── New Ticket Assignment Flow ───────────────────────────────────────────────
+
+/** Fetch all unassigned / pending tickets (admin queue) */
+export async function fetchUnassignedTickets() {
+    const d = await apiFetch("/portal/unassigned-tickets");
+    return { tickets: d.tickets || [], count: d.count };
+}
+
+/** Admin assigns a ticket to Hafiz (TECH-001) → status: PENDING_ACCEPTANCE */
+export async function assignTicket(ticketId, techId = "TECH-001") {
+    return apiFetch(`/portal/tickets/${ticketId}/assign?tech_id=${techId}`, { method: "PATCH" });
+}
+
+/** Hafiz accepts or rejects a PENDING_ACCEPTANCE ticket */
+export async function acceptOrRejectTicket(ticketId, accepted, rejectReason = "") {
+    return apiFetch(`/portal/tickets/${ticketId}/accept`, {
+        method: "PATCH",
+        body: JSON.stringify({ accepted, tech_id: "TECH-001", reject_reason: rejectReason }),
+    });
+}
+
+/** Hafiz books appointment after contacting customer → status: APPOINTMENT_BOOKED */
+export async function bookAppointment(ticketId, appointmentDate, notes = "") {
+    return apiFetch(`/portal/tickets/${ticketId}/book-appointment`, {
+        method: "PATCH",
+        body: JSON.stringify({ appointment_date: appointmentDate, notes }),
+    });
 }
