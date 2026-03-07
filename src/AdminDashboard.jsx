@@ -222,12 +222,17 @@ function PartsApprovalTab({ partsData: stats }) {
               <tr style={{ background: "var(--bg-subtle)" }}>
                 <th style={{ padding: "10px 14px", textAlign: "left", fontWeight: 700, fontSize: 11, color: "var(--text-secondary)" }}>PART</th>
                 <th style={{ padding: "10px 14px", textAlign: "left", fontWeight: 700, fontSize: 11, color: "var(--text-secondary)" }}>STOCK</th>
-                <th style={{ padding: "10px 14px", textAlign: "right", fontWeight: 700, fontSize: 11, color: "var(--text-secondary)" }}>COST</th>
+                <th style={{ padding: "10px 14px", textAlign: "center", fontWeight: 700, fontSize: 11, color: "var(--text-secondary)" }}>QTY</th>
+                <th style={{ padding: "10px 14px", textAlign: "right", fontWeight: 700, fontSize: 11, color: "var(--text-secondary)" }}>UNIT (RM)</th>
+                <th style={{ padding: "10px 14px", textAlign: "right", fontWeight: 700, fontSize: 11, color: "var(--text-secondary)" }}>TOTAL (RM)</th>
               </tr>
             </thead>
             <tbody>
               {a.predictedParts.map((p, i) => {
                 const stock = STOCK_CFG[p.stock] || STOCK_CFG.UNKNOWN;
+                const qty = parseInt(p.quantity) || 1;
+                const unitCost = warrantyOk ? 0 : Number(p.cost || 0);
+                const lineTotal = unitCost * qty;
                 return (
                   <tr key={i} style={{ borderTop: "1px solid var(--border)" }}>
                     <td style={{ padding: "10px 14px" }}>
@@ -237,10 +242,20 @@ function PartsApprovalTab({ partsData: stats }) {
                     <td style={{ padding: "10px 14px" }}>
                       <span className="badge" style={{ color: stock.color, background: stock.bg, fontSize: 10 }}>{stock.label}</span>
                     </td>
-                    <td style={{ padding: "10px 14px", textAlign: "right", fontWeight: 600 }}>RM {Number(p.cost || 0).toFixed(2)}</td>
+                    <td style={{ padding: "10px 14px", textAlign: "center", fontWeight: 600 }}>{qty}</td>
+                    <td style={{ padding: "10px 14px", textAlign: "right", color: "var(--text-secondary)" }}>{unitCost.toFixed(2)}</td>
+                    <td style={{ padding: "10px 14px", textAlign: "right", fontWeight: 600 }}>{lineTotal.toFixed(2)}</td>
                   </tr>
                 );
               })}
+              <tr style={{ background: "var(--bg-subtle)", borderTop: "1.5px solid var(--border)" }}>
+                <td colSpan={4} style={{ padding: "10px 14px", fontWeight: 700, textAlign: "right" }}>
+                  {warrantyOk ? "Total (Under Warranty — No Charge)" : "Total Chargeable"}
+                </td>
+                <td style={{ padding: "10px 14px", textAlign: "right", fontWeight: 800, color: warrantyOk ? "#0369a1" : "var(--accent)", fontSize: 14 }}>
+                  {warrantyOk ? "0.00" : a.totalCost.toFixed(2)}
+                </td>
+              </tr>
             </tbody>
           </table>
         </div>
@@ -432,7 +447,7 @@ function ApprovalHistorySection() {
                               ))}
                             </td>
                             <td style={{ padding: "10px 14px", textAlign: "right", fontWeight: 700, fontSize: 12, color: isApproved ? "var(--brand)" : "var(--text-muted)" }}>
-                              RM {h.totalCost.toFixed(2)}
+                              {warrantyOk ? "0.00" : `RM ${h.totalCost.toFixed(2)}`}
                             </td>
                             <td style={{ padding: "10px 14px" }}>
                               <span className="badge" style={{ color: warrantyOk ? "var(--brand)" : "var(--accent)", background: warrantyOk ? "var(--brand-light)" : "var(--accent-light)", fontSize: 9 }}>

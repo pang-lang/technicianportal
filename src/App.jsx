@@ -283,7 +283,7 @@ function MyJobsPage({ jobs, stats, loading, error, onSelectJob, onRetry }) {
 // ══════════════════════════════════════════════════════════════════════════════
 // JOB DETAIL PAGE
 // ══════════════════════════════════════════════════════════════════════════════
-function JobDetailPage({ jobId, onBack, onJobMutated }) {
+function JobDetailPage({ jobId, allJobs = [], onBack, onJobMutated }) {
   const [job, setJob] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -437,7 +437,7 @@ function JobDetailPage({ jobId, onBack, onJobMutated }) {
 
           {/* ── STEP 2: ACCEPTED — Contact & Book Appointment ── */}
           {job.status === "ACCEPTED" && view === "detail" && (
-            <BookAppointmentView job={job} onDone={reloadAfterMutation} />
+            <BookAppointmentView job={job} allJobs={allJobs} onDone={reloadAfterMutation} />
           )}
 
           {/* ── STEP 3: APPOINTMENT_BOOKED — Send reminder & Start Job ── */}
@@ -635,14 +635,47 @@ function AcceptRejectView({ job, onDone }) {
 
 
 // ══════════════════════════════════════════════════════════════════════════════
-// BOOK APPOINTMENT VIEW  (V1)
+// BOOK APPOINTMENT VIEW — with 2-hour clash detection
 // ══════════════════════════════════════════════════════════════════════════════
-function BookAppointmentView({ job, onDone }) {
+function BookAppointmentView({ job, allJobs = [], onDone }) {
   const [appointmentDate, setAppointmentDate] = useState("");
   const [appointmentTime, setAppointmentTime] = useState("09:00");
   const [notes, setNotes] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState(null);
+
+  const SERVICE_DURATION_MS = 2 * 60 * 60 * 1000; // 2 hours per job
+
+  // All booked appointment timestamps (excluding this ticket and completed/cancelled jobs)
+  const bookedTimes = allJobs
+    .filter(j => j.id !== job.id && j.appointmentDate &&
+      !["COMPLETED", "CANCELLED"].includes(j.status))
+    .map(j => new Date(j.appointmentDate).getTime())
+    .filter(t => !isNaN(t));
+
+  // Returns the clashing appointment's display string, or null if no clash
+  function getClash(dateStr, timeStr) {
+    if (!dateStr || !timeStr) return null;
+    const proposed = new Date(`${dateStr}T${timeStr}:00`).getTime();
+    for (const booked of bookedTimes) {
+      if (Math.abs(proposed - booked) < SERVICE_DURATION_MS) {
+        return new Date(booked).toLocaleString("en-MY", {
+          weekday: "short", day: "2-digit", month: "short",
+          hour: "2-digit", minute: "2-digit", hour12: true,
+        });
+      }
+    }
+    return null;
+  }
+
+  const clashWith = getClash(appointmentDate, appointmentTime);
+
+  // Existing bookings on the selected date (for the hint strip)
+  const bookedOnDate = appointmentDate
+    ? bookedTimes
+        .filter(t => new Date(t).toISOString().split("T")[0] === appointmentDate)
+        .map(t => new Date(t).toLocaleTimeString("en-MY", { hour: "2-digit", minute: "2-digit", hour12: true }))
+    : [];
 
   const waMessage = encodeURIComponent(
     `Hi ${job.customerName}, this is Hafiz from Fiamma service team. ` +
@@ -655,12 +688,18 @@ function BookAppointmentView({ job, onDone }) {
 
   async function handleBook() {
     if (!appointmentDate) { setError("Please select an appointment date."); return; }
+    if (clashWith) {
+      setError(`Scheduling conflict with existing appointment at ${clashWith}. Each job takes 2 hours — please pick a different slot.`);
+      return;
+    }
     setSubmitting(true); setError(null);
     try {
       await apiBookAppointment(job.id, `${appointmentDate}T${appointmentTime}:00`, notes);
       await onDone();
     } catch (e) { setError(e.message); setSubmitting(false); }
   }
+
+  const TIME_SLOTS = ["08:00","09:00","10:00","11:00","12:00","13:00","14:00","15:00","16:00","17:00"];
 
   return (
     <div className="animate-in">
@@ -698,7 +737,24 @@ function BookAppointmentView({ job, onDone }) {
 
       <div className="card">
         <div style={{ fontWeight: 700, marginBottom: 16, fontSize: 15 }}>📅 Book Appointment</div>
+
         {error && <ErrorBanner message={error} />}
+
+        {/* Live clash warning */}
+        {!error && clashWith && (
+          <div style={{ padding: "10px 14px", background: "#fef3c7", border: "1px solid #fcd34d", borderRadius: 8, marginBottom: 12, fontSize: 13, color: "#92400e", display: "flex", gap: 8, alignItems: "flex-start" }}>
+            <span style={{ flexShrink: 0 }}>⚠️</span>
+            <span><strong>Scheduling conflict:</strong> You already have a job booked at {clashWith}. Each service call takes 2 hours — choose a slot at least 2 hours apart.</span>
+          </div>
+        )}
+
+        {/* Booked-slots hint for the chosen date */}
+        {bookedOnDate.length > 0 && (
+          <div style={{ padding: "8px 12px", background: "var(--bg-subtle)", border: "1px solid var(--border)", borderRadius: 8, marginBottom: 12, fontSize: 12, color: "var(--text-secondary)" }}>
+            📌 Existing appointments on this date: <strong>{bookedOnDate.join(", ")}</strong> — each blocks a 2-hour window.
+          </div>
+        )}
+
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 12 }}>
           <div className="form-group" style={{ marginBottom: 0 }}>
             <label className="form-label">Date <span style={{ color: "var(--accent)" }}>*</span></label>
@@ -706,18 +762,33 @@ function BookAppointmentView({ job, onDone }) {
           </div>
           <div className="form-group" style={{ marginBottom: 0 }}>
             <label className="form-label">Time</label>
-            <select className="form-control" value={appointmentTime} onChange={e => setAppointmentTime(e.target.value)}>
-              {["08:00","09:00","10:00","11:00","12:00","13:00","14:00","15:00","16:00","17:00"].map(t => (
-                <option key={t} value={t}>{t}</option>
-              ))}
+            <select
+              className="form-control"
+              value={appointmentTime}
+              onChange={e => setAppointmentTime(e.target.value)}
+              style={{ borderColor: clashWith ? "#f59e0b" : undefined }}
+            >
+              {TIME_SLOTS.map(t => {
+                const slotClash = getClash(appointmentDate, t);
+                return (
+                  <option key={t} value={t} disabled={!!slotClash}>
+                    {t}{slotClash ? "  ⚠ conflict" : ""}
+                  </option>
+                );
+              })}
             </select>
           </div>
         </div>
+
         <div className="form-group" style={{ marginBottom: 12 }}>
           <label className="form-label">Notes (optional)</label>
           <input className="form-control" placeholder="e.g. Customer prefers morning, side gate entry..." value={notes} onChange={e => setNotes(e.target.value)} />
         </div>
-        <button className="btn btn-primary btn-full" disabled={!appointmentDate || submitting} onClick={handleBook}>
+        <button
+          className="btn btn-primary btn-full"
+          disabled={!appointmentDate || submitting || !!clashWith}
+          onClick={handleBook}
+        >
           {submitting ? "Booking..." : "Confirm Appointment"}
         </button>
       </div>
@@ -799,8 +870,9 @@ function LogFaultView({ job, onDone, setView }) {
     setSubmitting(true); setError(null);
     try {
       const res = await apiLogFault(job.id, faultType, notes);
-      setResult(res);
+      // Reload parent job FIRST so predictedParts is populated before PartsView mounts
       await onDone();
+      setResult(res);
     } catch (e) {
       setError(e.message);
     } finally {
@@ -1152,12 +1224,16 @@ function PartsView({ job, onDone, setView }) {
                   <th style={{ padding: "12px 16px", fontWeight: 700, fontSize: 12, color: "var(--text-secondary)" }}>PART NAME</th>
                   <th style={{ padding: "12px 16px", fontWeight: 700, fontSize: 12, color: "var(--text-secondary)" }}>STOCK</th>
                   <th style={{ padding: "12px 16px", fontWeight: 700, fontSize: 12, color: "var(--text-secondary)", textAlign: "center" }}>QTY</th>
-                  <th style={{ padding: "12px 16px", fontWeight: 700, fontSize: 12, color: "var(--text-secondary)", textAlign: "right" }}>COST (RM)</th>
+                  <th style={{ padding: "12px 16px", fontWeight: 700, fontSize: 12, color: "var(--text-secondary)", textAlign: "right" }}>UNIT (RM)</th>
+                  <th style={{ padding: "12px 16px", fontWeight: 700, fontSize: 12, color: "var(--text-secondary)", textAlign: "right" }}>TOTAL (RM)</th>
                 </tr>
               </thead>
               <tbody>
                 {currentParts.map(p => {
                   const stock = STOCK_CFG[p.stock] || STOCK_CFG.UNKNOWN;
+                  const qty = p.quantity || 1;
+                  const unitCost = job.chargeApplicable ? (p.cost || 0) : 0;
+                  const lineTotal = unitCost * qty;
                   return (
                     <tr key={p.partId} style={{ borderTop: "1px solid var(--border)" }}>
                       <td style={{ padding: "12px 16px" }}>
@@ -1167,16 +1243,21 @@ function PartsView({ job, onDone, setView }) {
                       <td style={{ padding: "12px 16px" }}>
                         <span className="badge" style={{ color: stock.color, background: stock.bg, fontSize: 10 }}>{stock.label}</span>
                       </td>
-                      <td style={{ padding: "12px 16px", textAlign: "center", fontWeight: 600 }}>{p.quantity || 1}</td>
-                      <td style={{ padding: "12px 16px", textAlign: "right", fontWeight: 600 }}>{(p.cost * (p.quantity || 1)).toFixed(2)}</td>
+                      <td style={{ padding: "12px 16px", textAlign: "center", fontWeight: 600 }}>{qty}</td>
+                      <td style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-secondary)" }}>{unitCost.toFixed(2)}</td>
+                      <td style={{ padding: "12px 16px", textAlign: "right", fontWeight: 600 }}>{lineTotal.toFixed(2)}</td>
                     </tr>
                   );
                 })}
               </tbody>
               <tfoot>
                 <tr style={{ background: "var(--bg-subtle)", borderTop: "1px solid var(--border)" }}>
-                  <td colSpan="3" style={{ padding: "12px 16px", fontWeight: 700, textAlign: "right" }}>Total</td>
-                  <td style={{ padding: "12px 16px", textAlign: "right", fontWeight: 800, color: "var(--brand)", fontSize: 16 }}>{total.toFixed(2)}</td>
+                  <td colSpan="4" style={{ padding: "12px 16px", fontWeight: 700, textAlign: "right" }}>
+                    {job.chargeApplicable ? "Total Chargeable" : "Total (Warranty — No Charge)"}
+                  </td>
+                  <td style={{ padding: "12px 16px", textAlign: "right", fontWeight: 800, color: job.chargeApplicable ? "var(--brand)" : "#0369a1", fontSize: 16 }}>
+                    {job.chargeApplicable ? total.toFixed(2) : "0.00"}
+                  </td>
                 </tr>
               </tfoot>
             </table>
@@ -1394,13 +1475,39 @@ function CompleteJobView({ job, onDone, setView, onBack }) {
           <div className="stat-label" style={{ marginTop: 0, marginBottom: 8 }}>Parts to Install</div>
           <div style={{ border: "1px solid var(--border)", borderRadius: 8, overflow: "hidden" }}>
             <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+              <thead style={{ background: "var(--bg-subtle)" }}>
+                <tr>
+                  <th style={{ padding: "8px 12px", textAlign: "left", fontWeight: 700, fontSize: 11, color: "var(--text-secondary)" }}>PART</th>
+                  <th style={{ padding: "8px 12px", textAlign: "center", fontWeight: 700, fontSize: 11, color: "var(--text-secondary)" }}>QTY</th>
+                  <th style={{ padding: "8px 12px", textAlign: "right", fontWeight: 700, fontSize: 11, color: "var(--text-secondary)" }}>UNIT (RM)</th>
+                  <th style={{ padding: "8px 12px", textAlign: "right", fontWeight: 700, fontSize: 11, color: "var(--text-secondary)" }}>TOTAL (RM)</th>
+                </tr>
+              </thead>
               <tbody>
-                {partsUsed.map(p => (
-                  <tr key={p.partId} style={{ borderTop: "1px solid var(--border)" }}>
-                    <td style={{ padding: "8px 12px" }}>{p.name} <span className="mono" style={{ fontSize: 10, color: "var(--text-muted)" }}>({p.partId})</span></td>
-                    <td style={{ padding: "8px 12px", textAlign: "right", fontWeight: 600 }}>RM {(p.cost || 0).toFixed(2)}</td>
-                  </tr>
-                ))}
+                {partsUsed.map(p => {
+                  const qty = p.quantity || 1;
+                  const unitCost = job.chargeApplicable ? (p.cost || 0) : 0;
+                  return (
+                    <tr key={p.partId} style={{ borderTop: "1px solid var(--border)" }}>
+                      <td style={{ padding: "8px 12px" }}>
+                        {p.name} <span className="mono" style={{ fontSize: 10, color: "var(--text-muted)" }}>({p.partId})</span>
+                      </td>
+                      <td style={{ padding: "8px 12px", textAlign: "center" }}>{qty}</td>
+                      <td style={{ padding: "8px 12px", textAlign: "right", color: "var(--text-secondary)" }}>{unitCost.toFixed(2)}</td>
+                      <td style={{ padding: "8px 12px", textAlign: "right", fontWeight: 600 }}>{(unitCost * qty).toFixed(2)}</td>
+                    </tr>
+                  );
+                })}
+                <tr style={{ background: "var(--bg-subtle)", borderTop: "1.5px solid var(--border)" }}>
+                  <td colSpan={3} style={{ padding: "8px 12px", fontWeight: 700, textAlign: "right" }}>
+                    {job.chargeApplicable ? "Total Parts Cost" : "Total (Under Warranty)"}
+                  </td>
+                  <td style={{ padding: "8px 12px", textAlign: "right", fontWeight: 800, color: job.chargeApplicable ? "var(--brand)" : "#0369a1" }}>
+                    {job.chargeApplicable
+                      ? partsUsed.reduce((s, p) => s + (p.cost || 0) * (p.quantity || 1), 0).toFixed(2)
+                      : "0.00"}
+                  </td>
+                </tr>
               </tbody>
             </table>
           </div>
@@ -1844,7 +1951,7 @@ export default function App() {
 
       <main className="container mt-32">
         {selectedJobId ? (
-          <JobDetailPage jobId={selectedJobId} onBack={() => setSelectedJobId(null)} onJobMutated={loadJobs} />
+          <JobDetailPage jobId={selectedJobId} allJobs={jobs} onBack={() => setSelectedJobId(null)} onJobMutated={loadJobs} />
         ) : view === "alerts" ? (
           <EscalationPage />
         ) : view === "ratings" ? (

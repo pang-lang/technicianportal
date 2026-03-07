@@ -64,7 +64,11 @@ export function ServiceReportSubmitView({ job, onReportSubmitted, onDraftComplet
     const [result, setResult] = useState(null);
 
     const partsUsed = job.predictedParts || [];
-    const totalCost = partsUsed.reduce((s, p) => s + (p.cost || 0), 0);
+    // For display and totals: warranty jobs show RM 0 per part
+    const isWarranty = !job.chargeApplicable;
+    const totalCost = isWarranty
+        ? 0
+        : partsUsed.reduce((s, p) => s + (p.cost || 0) * (p.quantity || 1), 0);
 
     async function handleSubmit() {
         if (!workNotes.trim()) { setError("Please describe the technical work done."); return; }
@@ -75,8 +79,15 @@ export function ServiceReportSubmitView({ job, onReportSubmitted, onDraftComplet
             faultType: job.faultType,
             faultNotes: job.faultNotes,
             workDoneNotes: workNotes,
-            partsUsed: partsUsed.map(p => ({ partId: p.partId, name: p.name, cost: p.cost })),
+            partsUsed: partsUsed.map(p => ({
+                partId: p.partId,
+                name: p.name,
+                quantity: p.quantity || 1,
+                unitCost: isWarranty ? 0 : (p.cost || 0),
+                cost: isWarranty ? 0 : (p.cost || 0) * (p.quantity || 1),
+            })),
             totalPartsCost: totalCost,
+            isWarranty,
             completedAt: job.completedAt || new Date().toISOString(),
         };
 
@@ -176,20 +187,32 @@ export function ServiceReportSubmitView({ job, onReportSubmitted, onDraftComplet
                                         <tr>
                                             <th style={{ padding: "8px 12px", textAlign: "left", fontWeight: 700, fontSize: 11, color: "var(--text-secondary)" }}>PART</th>
                                             <th style={{ padding: "8px 12px", textAlign: "left", fontWeight: 700, fontSize: 11, color: "var(--text-secondary)" }}>PART ID</th>
-                                            <th style={{ padding: "8px 12px", textAlign: "right", fontWeight: 700, fontSize: 11, color: "var(--text-secondary)" }}>COST</th>
+                                            <th style={{ padding: "8px 12px", textAlign: "center", fontWeight: 700, fontSize: 11, color: "var(--text-secondary)" }}>QTY</th>
+                                            <th style={{ padding: "8px 12px", textAlign: "right", fontWeight: 700, fontSize: 11, color: "var(--text-secondary)" }}>UNIT (RM)</th>
+                                            <th style={{ padding: "8px 12px", textAlign: "right", fontWeight: 700, fontSize: 11, color: "var(--text-secondary)" }}>TOTAL (RM)</th>
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        {partsUsed.map(p => (
-                                            <tr key={p.partId} style={{ borderTop: "1px solid var(--border)" }}>
-                                                <td style={{ padding: "8px 12px", fontWeight: 600 }}>{p.name}</td>
-                                                <td style={{ padding: "8px 12px", fontFamily: "monospace", fontSize: 11, color: "var(--text-muted)" }}>{p.partId}</td>
-                                                <td style={{ padding: "8px 12px", textAlign: "right", fontWeight: 600 }}>RM {(p.cost || 0).toFixed(2)}</td>
-                                            </tr>
-                                        ))}
+                                        {partsUsed.map(p => {
+                                            const qty = p.quantity || 1;
+                                            const unitCost = isWarranty ? 0 : (p.cost || 0);
+                                            return (
+                                                <tr key={p.partId} style={{ borderTop: "1px solid var(--border)" }}>
+                                                    <td style={{ padding: "8px 12px", fontWeight: 600 }}>{p.name}</td>
+                                                    <td style={{ padding: "8px 12px", fontFamily: "monospace", fontSize: 11, color: "var(--text-muted)" }}>{p.partId}</td>
+                                                    <td style={{ padding: "8px 12px", textAlign: "center" }}>{qty}</td>
+                                                    <td style={{ padding: "8px 12px", textAlign: "right", color: "var(--text-secondary)" }}>{unitCost.toFixed(2)}</td>
+                                                    <td style={{ padding: "8px 12px", textAlign: "right", fontWeight: 600 }}>{(unitCost * qty).toFixed(2)}</td>
+                                                </tr>
+                                            );
+                                        })}
                                         <tr style={{ background: "var(--bg-subtle)", borderTop: "1.5px solid var(--border)" }}>
-                                            <td colSpan={2} style={{ padding: "8px 12px", fontWeight: 700 }}>Total Parts Material</td>
-                                            <td style={{ padding: "8px 12px", textAlign: "right", fontWeight: 800, color: "var(--brand)" }}>RM {totalCost.toFixed(2)}</td>
+                                            <td colSpan={4} style={{ padding: "8px 12px", fontWeight: 700 }}>
+                                                {isWarranty ? "Total (Under Warranty — No Charge)" : "Total Parts Material"}
+                                            </td>
+                                            <td style={{ padding: "8px 12px", textAlign: "right", fontWeight: 800, color: isWarranty ? "#0369a1" : "var(--brand)" }}>
+                                                RM {totalCost.toFixed(2)}
+                                            </td>
                                         </tr>
                                     </tbody>
                                 </table>
@@ -377,7 +400,15 @@ export function TicketDocumentsReview({ ticketId }) {
 
 // ── Service Report display panel ──────────────────────────────────────────────
 function ServiceReportPanel({ report }) {
-    const totalCost = (report.partsUsed || []).reduce((s, p) => s + (p.cost || 0), 0);
+    const isWarranty = !!report.isWarranty;
+    const totalCost = isWarranty
+        ? 0
+        : (report.partsUsed || []).reduce((s, p) => {
+            const qty = p.quantity || 1;
+            // support both old format (p.cost = line total) and new (p.unitCost × qty)
+            const unit = p.unitCost != null ? p.unitCost : (p.cost || 0) / qty;
+            return s + unit * qty;
+          }, 0);
 
     return (
         <div>
@@ -418,22 +449,34 @@ function ServiceReportPanel({ report }) {
                             <thead style={{ background: "var(--bg-subtle)" }}>
                                 <tr>
                                     <th style={{ padding: "8px 12px", textAlign: "left", fontSize: 11, fontWeight: 700, color: "var(--text-secondary)" }}>PART</th>
-                                    <th style={{ padding: "8px 12px", textAlign: "right", fontSize: 11, fontWeight: 700, color: "var(--text-secondary)" }}>COST</th>
+                                    <th style={{ padding: "8px 12px", textAlign: "center", fontSize: 11, fontWeight: 700, color: "var(--text-secondary)" }}>QTY</th>
+                                    <th style={{ padding: "8px 12px", textAlign: "right", fontSize: 11, fontWeight: 700, color: "var(--text-secondary)" }}>UNIT (RM)</th>
+                                    <th style={{ padding: "8px 12px", textAlign: "right", fontSize: 11, fontWeight: 700, color: "var(--text-secondary)" }}>TOTAL (RM)</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                {report.partsUsed.map((p, i) => (
-                                    <tr key={p.partId || i} style={{ borderTop: "1px solid var(--border)" }}>
-                                        <td style={{ padding: "8px 12px" }}>
-                                            <span style={{ fontWeight: 600 }}>{p.name}</span>
-                                            <span style={{ fontFamily: "monospace", fontSize: 11, color: "var(--text-muted)", marginLeft: 8 }}>({p.partId})</span>
-                                        </td>
-                                        <td style={{ padding: "8px 12px", textAlign: "right", fontWeight: 600 }}>RM {(p.cost || 0).toFixed(2)}</td>
-                                    </tr>
-                                ))}
+                                {report.partsUsed.map((p, i) => {
+                                    const qty = p.quantity || 1;
+                                    const unitCost = isWarranty ? 0 : (p.unitCost != null ? p.unitCost : (p.cost || 0) / qty);
+                                    return (
+                                        <tr key={p.partId || i} style={{ borderTop: "1px solid var(--border)" }}>
+                                            <td style={{ padding: "8px 12px" }}>
+                                                <span style={{ fontWeight: 600 }}>{p.name}</span>
+                                                <span style={{ fontFamily: "monospace", fontSize: 11, color: "var(--text-muted)", marginLeft: 8 }}>({p.partId})</span>
+                                            </td>
+                                            <td style={{ padding: "8px 12px", textAlign: "center" }}>{qty}</td>
+                                            <td style={{ padding: "8px 12px", textAlign: "right", color: "var(--text-secondary)" }}>{unitCost.toFixed(2)}</td>
+                                            <td style={{ padding: "8px 12px", textAlign: "right", fontWeight: 600 }}>{(unitCost * qty).toFixed(2)}</td>
+                                        </tr>
+                                    );
+                                })}
                                 <tr style={{ background: "var(--bg-subtle)", borderTop: "1.5px solid var(--border)" }}>
-                                    <td style={{ padding: "8px 12px", fontWeight: 700 }}>Total Parts Material</td>
-                                    <td style={{ padding: "8px 12px", textAlign: "right", fontWeight: 800, color: "var(--brand)" }}>RM {totalCost.toFixed(2)}</td>
+                                    <td colSpan={3} style={{ padding: "8px 12px", fontWeight: 700 }}>
+                                        {isWarranty ? "Total (Under Warranty — No Charge)" : "Total Parts Material"}
+                                    </td>
+                                    <td style={{ padding: "8px 12px", textAlign: "right", fontWeight: 800, color: isWarranty ? "#0369a1" : "var(--brand)" }}>
+                                        RM {totalCost.toFixed(2)}
+                                    </td>
                                 </tr>
                             </tbody>
                         </table>
