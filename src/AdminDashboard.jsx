@@ -47,7 +47,11 @@ function StatCard({ label, value, sub, accent }) {
 
 // Simple bar chart — no library needed
 function BarChart({ data }) {
-  if (!data || data.length === 0) return <div style={{ color: "var(--text-muted)", padding: 20 }}>No data yet</div>;
+  if (!data || data.length === 0) return (
+    <div style={{ color: "var(--text-muted)", padding: 20, fontSize: 13 }}>
+      No repair history yet — chart will populate after technicians log faults on jobs.
+    </div>
+  );
   const max = Math.max(...data.map(d => d.count));
 
   return (
@@ -309,10 +313,10 @@ function PartsApprovalTab({ partsData: stats }) {
       </div>
 
       <div style={{ display: "flex", gap: 16, marginBottom: 32, flexWrap: "wrap" }}>
-        <StatCard label="Total Requests" value={stats?.total_requests || 0} sub="All time" />
-        <StatCard label="Approved" value={stats?.approved_count || 0} sub="Parts approved" accent="var(--brand)" />
-        <StatCard label="Pending" value={stats?.pending_count || 0} sub="Awaiting approval" accent="var(--accent)" />
-        <StatCard label="Rejected" value={stats?.rejected_count || 0} sub="Rejected requests" accent="var(--accent)" />
+        <StatCard label="Parts in Catalogue" value={parts.total_catalogue_parts || 0} sub="All tracked parts" />
+        <StatCard label="Available" value={parts.stock_summary?.available || 0} sub="In stock" accent="#16a34a" />
+        <StatCard label="Low Stock" value={parts.stock_summary?.low || 0} sub="Needs reorder" accent="#f59e0b" />
+        <StatCard label="Out of Stock" value={parts.stock_summary?.out || 0} sub="Urgent restock" accent="#dc2626" />
       </div>
 
       <Divider label="Awaiting Authorization" />
