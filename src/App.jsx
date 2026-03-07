@@ -106,6 +106,7 @@ function Divider({ label }) {
 const Icon = {
   jobs:    () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="2" y="7" width="20" height="14" rx="2" /><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2" /></svg>,
   alert:   () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" /><line x1="12" y1="9" x2="12" y2="13" /><line x1="12" y1="17" x2="12.01" y2="17" /></svg>,
+  bell:    () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 16, height: 16 }}><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" /><path d="M13.73 21a2 2 0 0 1-3.46 0" /></svg>,
   approve: () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M9 11l3 3L22 4" /><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" /></svg>,
   refresh: () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="23 4 23 10 17 10" /><polyline points="1 20 1 14 7 14" /><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" /></svg>,
   back:    () => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="15 18 9 12 15 6" /></svg>,
@@ -403,8 +404,10 @@ function JobDetailPage({ jobId, onBack, onJobMutated }) {
                 if (!p) return null;
                 const achieved  = p.achieved;
                 const overdue   = p.overdue;
+                // Show 100% if achieved, else clamp pct_elapsed to 0–99
+                const displayPct = achieved ? 100 : Math.min(99, Math.max(0, Math.round(p.pct_elapsed || 0)));
                 const barColor  = achieved ? "#16a34a" : overdue ? "#e11d48" : "var(--brand)";
-                const label     = achieved ? `✓ done` : overdue ? "OVERDUE" : `${Math.round(p.pct_elapsed)}%`;
+                const label     = achieved ? `✓ done` : overdue ? "OVERDUE" : `${displayPct}%`;
                 const labelColor = achieved ? "#16a34a" : overdue ? "#e11d48" : "var(--text-secondary)";
                 return (
                   <div key={key} style={{ display: "flex", alignItems: "center", gap: 10 }}>
@@ -412,7 +415,7 @@ function JobDetailPage({ jobId, onBack, onJobMutated }) {
                       <span>{icon}</span> <span>{short}</span>
                     </div>
                     <div style={{ flex: 1, height: 6, background: "var(--bg-subtle)", borderRadius: 3, overflow: "hidden" }}>
-                      <div style={{ width: `${p.pct_elapsed}%`, height: "100%", background: barColor, borderRadius: 3, transition: "width 0.5s ease" }} />
+                      <div style={{ width: `${displayPct}%`, height: "100%", background: barColor, borderRadius: 3, transition: "width 0.5s ease" }} />
                     </div>
                     <div style={{ fontSize: 11, fontWeight: 700, color: labelColor, width: 52, textAlign: "right", flexShrink: 0 }}>{label}</div>
                   </div>
@@ -1426,6 +1429,10 @@ function CompleteJobView({ job, onDone, setView, onBack }) {
 }
 
 
+
+
+
+
 // ══════════════════════════════════════════════════════════════════════════════
 // ESCALATION MONITOR PAGE
 // ══════════════════════════════════════════════════════════════════════════════
@@ -1499,6 +1506,232 @@ function EscalationPage() {
   );
 }
 
+// ══════════════════════════════════════════════════════════════════════════════
+// TECHNICIAN CALENDAR PAGE — appointment calendar + KPI reminders
+// ══════════════════════════════════════════════════════════════════════════════
+function TechCalendarPage({ jobs, onSelectJob }) {
+  const today = new Date();
+  const [curYear,  setCurYear]  = useState(today.getFullYear());
+  const [curMonth, setCurMonth] = useState(today.getMonth()); // 0-indexed
+
+  const monthStart = new Date(curYear, curMonth, 1);
+  const monthEnd   = new Date(curYear, curMonth + 1, 0);
+
+  // Build a map: "YYYY-MM-DD" → array of jobs with appointment on that day
+  const apptMap = {};
+  (jobs || []).forEach(job => {
+    if (!job.appointmentDate) return;
+    try {
+      const d = new Date(job.appointmentDate);
+      const key = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
+      if (!apptMap[key]) apptMap[key] = [];
+      apptMap[key].push(job);
+    } catch (_) {}
+  });
+
+  // Jobs with appointment TODAY
+  const todayKey = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,"0")}-${String(today.getDate()).padStart(2,"0")}`;
+  const todayJobs = apptMap[todayKey] || [];
+
+  // Jobs with appointment within the next 24 hours (tomorrow included) but not today
+  const upcomingJobs = (jobs || []).filter(job => {
+    if (!job.appointmentDate) return false;
+    if (job.status === "COMPLETED" || job.status === "CANCELLED") return false;
+    const appt = new Date(job.appointmentDate);
+    const msUntil = appt.getTime() - Date.now();
+    const isToday = appt.getDate() === today.getDate() && appt.getMonth() === today.getMonth() && appt.getFullYear() === today.getFullYear();
+    return !isToday && msUntil > 0 && msUntil <= 24 * 60 * 60 * 1000;
+  });
+
+  // Build calendar grid — first day of month may not be Monday
+  const firstDow = monthStart.getDay(); // 0=Sun
+  const daysInMonth = monthEnd.getDate();
+  const cells = [];
+  for (let i = 0; i < firstDow; i++) cells.push(null);
+  for (let d = 1; d <= daysInMonth; d++) cells.push(d);
+  while (cells.length % 7 !== 0) cells.push(null);
+
+  const MONTH_NAMES = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+  const DOW = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
+
+  function prevMonth() {
+    if (curMonth === 0) { setCurMonth(11); setCurYear(y => y - 1); }
+    else setCurMonth(m => m - 1);
+  }
+  function nextMonth() {
+    if (curMonth === 11) { setCurMonth(0); setCurYear(y => y + 1); }
+    else setCurMonth(m => m + 1);
+  }
+
+  function formatTime(iso) {
+    try {
+      return new Date(iso).toLocaleTimeString("en-MY", { hour: "2-digit", minute: "2-digit", hour12: true });
+    } catch (_) { return ""; }
+  }
+
+  const STATUS_COLOR = {
+    APPOINTMENT_BOOKED: { bg: "#ccfbf1", color: "#0d9488" },
+    JOB_STARTED:        { bg: "#fdf0eb", color: "#e05c2a" },
+    AWAITING_PARTS:     { bg: "#f3e8ff", color: "#7c3aed" },
+    PROCEED_JOB:        { bg: "#e0f7fa", color: "#0891b2" },
+    COMPLETED:          { bg: "#dcfce7", color: "#16a34a" },
+  };
+
+  return (
+    <div className="animate-in">
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 24, gap: 20, flexWrap: "wrap" }}>
+        <div>
+          <h1 className="display-font mb-4" style={{ fontSize: 28 }}>Appointment Calendar</h1>
+          <p style={{ color: "var(--text-secondary)", fontSize: 14 }}>All your booked appointments at a glance</p>
+        </div>
+
+        {/* Notification panels */}
+        <div style={{ display: "flex", flexDirection: "column", gap: 10, minWidth: 240 }}>
+
+          {/* TODAY's appointments */}
+          {todayJobs.length > 0 && (
+            <div className="card" style={{ background: "#fef3c7", border: "1px solid #fcd34d", padding: "12px 16px" }}>
+              <div style={{ fontSize: 13, fontWeight: 700, color: "#92400e", marginBottom: 8, display: "flex", alignItems: "center", gap: 6 }}>
+                🔔 {todayJobs.length} Appointment{todayJobs.length > 1 ? "s" : ""} Today
+              </div>
+              {todayJobs.map(job => (
+                <div key={job.id} onClick={() => onSelectJob(job)}
+                  style={{ fontSize: 12, padding: "6px 0", borderTop: "1px solid #fcd34d", cursor: "pointer", color: "#78350f", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                  <div>
+                    <span style={{ fontWeight: 700 }}>{job.id}</span>
+                    <span style={{ marginLeft: 6 }}>{job.customerName}</span>
+                  </div>
+                  <span style={{ fontWeight: 700, color: "#b45309" }}>{formatTime(job.appointmentDate)}</span>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Upcoming within 24h (tomorrow) */}
+          {upcomingJobs.length > 0 && (
+            <div className="card" style={{ background: "#fff7ed", border: "1px solid #fed7aa", padding: "12px 16px" }}>
+              <div style={{ fontSize: 13, fontWeight: 700, color: "#c2410c", marginBottom: 8, display: "flex", alignItems: "center", gap: 6 }}>
+                ⏰ {upcomingJobs.length} Appointment{upcomingJobs.length > 1 ? "s" : ""} Tomorrow
+              </div>
+              {upcomingJobs.map(job => (
+                <div key={job.id} onClick={() => onSelectJob(job)}
+                  style={{ fontSize: 12, padding: "6px 0", borderTop: "1px solid #fed7aa", cursor: "pointer", color: "#9a3412", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                  <div>
+                    <span style={{ fontWeight: 700 }}>{job.id}</span>
+                    <span style={{ marginLeft: 6 }}>{job.customerName}</span>
+                  </div>
+                  <span style={{ fontWeight: 700 }}>{formatTime(job.appointmentDate)}</span>
+                </div>
+              ))}
+            </div>
+          )}
+
+        </div>
+      </div>
+
+      {/* Month navigation */}
+      <div className="card" style={{ padding: 0, overflow: "hidden" }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "16px 20px", borderBottom: "1px solid var(--border)" }}>
+          <button className="btn btn-outline" style={{ padding: "6px 14px" }} onClick={prevMonth}>‹</button>
+          <div style={{ fontWeight: 800, fontSize: 18, fontFamily: "var(--font-display, inherit)" }}>
+            {MONTH_NAMES[curMonth]} {curYear}
+          </div>
+          <button className="btn btn-outline" style={{ padding: "6px 14px" }} onClick={nextMonth}>›</button>
+        </div>
+
+        {/* Day-of-week header */}
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", background: "var(--bg-subtle)" }}>
+          {DOW.map(d => (
+            <div key={d} style={{ padding: "8px", textAlign: "center", fontSize: 11, fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase" }}>{d}</div>
+          ))}
+        </div>
+
+        {/* Calendar cells */}
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)" }}>
+          {cells.map((day, idx) => {
+            const isToday = day === today.getDate() && curMonth === today.getMonth() && curYear === today.getFullYear();
+            const dateKey = day ? `${curYear}-${String(curMonth+1).padStart(2,"0")}-${String(day).padStart(2,"0")}` : null;
+            const dayJobs = dateKey ? (apptMap[dateKey] || []) : [];
+
+            return (
+              <div key={idx} style={{
+                minHeight: 90, padding: "8px 6px",
+                borderTop: "1px solid var(--border)",
+                borderLeft: idx % 7 !== 0 ? "1px solid var(--border)" : "none",
+                background: !day ? "var(--bg-subtle)" : isToday ? "#fef9f0" : "#fff",
+                opacity: !day ? 0.4 : 1,
+              }}>
+                {day && (
+                  <>
+                    <div style={{
+                      fontSize: 12, fontWeight: isToday ? 800 : 500,
+                      color: isToday ? "#fff" : "var(--text-secondary)",
+                      marginBottom: 4,
+                      display: "flex", alignItems: "center", gap: 4,
+                    }}>
+                      <span style={{
+                        width: 24, height: 24, borderRadius: "50%",
+                        background: isToday ? "var(--brand)" : "transparent",
+                        display: "flex", alignItems: "center", justifyContent: "center",
+                        color: isToday ? "#fff" : "var(--text-secondary)",
+                        flexShrink: 0,
+                      }}>{day}</span>
+                      {isToday && (
+                        <span style={{
+                          fontSize: 9, fontWeight: 800, background: "var(--accent)", color: "#fff",
+                          padding: "1px 5px", borderRadius: 8, letterSpacing: "0.05em",
+                          textTransform: "uppercase",
+                        }}>TODAY</span>
+                      )}
+                    </div>
+                    {dayJobs.map(job => {
+                      const sc = STATUS_COLOR[job.status] || { bg: "var(--bg-subtle)", color: "var(--text-muted)" };
+                      const isApptToday = dateKey === todayKey;
+                      const hasReminder = todayJobs.some(r => r.id === job.id);
+                      return (
+                        <div key={job.id} onClick={() => onSelectJob(job)}
+                          title={`${job.id} — ${job.customerName}`}
+                          style={{
+                            fontSize: 10, padding: "3px 6px", borderRadius: 4, marginBottom: 3,
+                            background: sc.bg, color: sc.color, cursor: "pointer",
+                            fontWeight: 600, lineHeight: 1.4,
+                            display: "flex", alignItems: "flex-start", gap: 3,
+                            border: hasReminder ? `2px solid ${sc.color}` : "1px solid transparent",
+                            boxShadow: hasReminder ? `0 0 0 2px ${sc.bg}` : "none",
+                          }}>
+                          {hasReminder && <span title="Appointment today">🔔</span>}
+                          <div>
+                            <div>{job.id}</div>
+                            <div style={{ opacity: 0.8 }}>{job.customerName}</div>
+                            <div style={{ opacity: 0.7, fontWeight: 400 }}>{formatTime(job.appointmentDate)}</div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Legend */}
+      <div style={{ display: "flex", gap: 12, marginTop: 16, flexWrap: "wrap" }}>
+        {Object.entries(STATUS_COLOR).map(([k, v]) => (
+          <div key={k} style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11 }}>
+            <div style={{ width: 10, height: 10, borderRadius: 2, background: v.bg, border: `1px solid ${v.color}` }} />
+            <span style={{ color: "var(--text-secondary)" }}>{k.replace(/_/g, " ")}</span>
+          </div>
+        ))}
+        <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11 }}>
+          <span>🔔</span><span style={{ color: "var(--text-secondary)" }}>Today's appointment</span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 
 // ══════════════════════════════════════════════════════════════════════════════
 // ROOT APP
@@ -1512,6 +1745,17 @@ export default function App() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [alertBadge, setAlertBadge] = useState(0);
+
+  // Badge for calendar tab — jobs with appointment today (same calendar day)
+  const calendarBadge = (jobs || []).filter(job => {
+    if (!job.appointmentDate) return false;
+    if (job.status === "COMPLETED" || job.status === "CANCELLED") return false;
+    const appt = new Date(job.appointmentDate);
+    const now  = new Date();
+    return appt.getFullYear() === now.getFullYear() &&
+           appt.getMonth()    === now.getMonth()    &&
+           appt.getDate()     === now.getDate();
+  }).length;
 
   const loadJobs = useCallback(async () => {
     setLoading(true); setError(null);
@@ -1545,7 +1789,7 @@ export default function App() {
   if (userRole === "admin")  return <AdminDashboard onLogout={handleLogout} />;
   if (!userRole)             return <LoginPage onLogin={handleLogin} />;
 
-  function NavBtn({ id, label, badge }) {
+  function NavBtn({ id, label, badge, bellBadge }) {
     const active = view === id && !selectedJobId;
     return (
       <button onClick={() => { setView(id); setSelectedJobId(null); }} style={{
@@ -1556,11 +1800,20 @@ export default function App() {
         transition: "all 0.2s", display: "flex", alignItems: "center", gap: 6,
       }}>
         {label}
-        {badge > 0 && (
+        {badge > 0 && bellBadge ? (
+          <span style={{ position: "relative", display: "inline-flex", alignItems: "center" }}>
+            <span style={{ color: badge > 0 ? "var(--accent)" : "var(--text-muted)" }}>
+              <Icon.bell />
+            </span>
+            <span style={{ position: "absolute", top: -6, right: -8, background: "var(--accent)", color: "#fff", fontSize: 9, padding: "1px 4px", borderRadius: 10, fontWeight: 800, lineHeight: 1.4 }}>
+              {badge}
+            </span>
+          </span>
+        ) : badge > 0 ? (
           <span style={{ background: "var(--accent)", color: "#fff", fontSize: 10, padding: "1px 6px", borderRadius: 10, fontWeight: 700 }}>
             {badge}
           </span>
-        )}
+        ) : null}
       </button>
     );
   }
@@ -1573,9 +1826,10 @@ export default function App() {
             <img src="/fiamma_logo.png" alt="Fiamma" style={{ height: 36 }} />
           </div>
           <nav style={{ display: "flex", gap: 32, marginLeft: 48, flex: 1 }}>
-            <NavBtn id="jobs"    label="My Jobs"     badge={0} />
-            <NavBtn id="alerts"  label="Alerts"      badge={alertBadge} />
-            <NavBtn id="ratings" label="My Ratings"  badge={0} />
+            <NavBtn id="jobs"      label="My Jobs"     badge={0} />
+            <NavBtn id="calendar" label="📅 Calendar"  badge={calendarBadge} bellBadge={true} />
+            <NavBtn id="alerts"   label="Alerts"       badge={alertBadge} />
+            <NavBtn id="ratings"  label="My Ratings"   badge={0} />
           </nav>
           <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
             <div className="badge" style={{ background: "var(--brand-light)", color: "var(--brand)", textTransform: "none", borderRadius: 8 }}>
@@ -1595,6 +1849,8 @@ export default function App() {
           <EscalationPage />
         ) : view === "ratings" ? (
           <MyRatings techId="TECH-001" />
+        ) : view === "calendar" ? (
+          <TechCalendarPage jobs={jobs} onSelectJob={j => setSelectedJobId(j.id)} />
         ) : (
           <MyJobsPage jobs={jobs} stats={stats} loading={loading} error={error}
             onSelectJob={j => setSelectedJobId(j.id)} onRetry={loadJobs} />

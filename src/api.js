@@ -50,6 +50,8 @@ function normalizeJob(j) {
         slaBreached: j.sla_breached,
         elapsedMinutes: j.elapsed_minutes,
         slaLimitMinutes: j.sla_limit_minutes,
+        appointmentDate: j.appointment_date || null,
+        kpiStatus: j.kpi_status || null,
         // detail-only fields (placeholder)
         address: "", serialNumber: "", faultType: null, faultNotes: null,
         predictedParts: [], partsApproved: false, completedAt: null, compensationCode: null,
@@ -418,5 +420,12 @@ export async function requestPartsApproval(ticketId) {
 export async function fetchKPISummary() {
     const res = await fetch(`${API_BASE}/admin/kpi-summary`);
     if (!res.ok) throw new Error("Failed to fetch KPI summary");
+    return res.json();
+}
+
+// ── KPI Summary (Technician — own tickets only) ───────────────────────────────
+export async function fetchTechKPISummary(techId = "TECH-001") {
+    const res = await fetch(`${API_BASE}/portal/kpi/${techId}`);
+    if (!res.ok) throw new Error("Failed to fetch technician KPI");
     return res.json();
 }

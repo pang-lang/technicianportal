@@ -642,18 +642,39 @@ function KPITab() {
           const p = data.phases[pk];
           const rate = p.compliance_rate;
           const rateColor = rate === null ? "var(--text-muted)" : rate >= 80 ? "#16a34a" : rate >= 60 ? "#e05c2a" : "#e11d48";
+          // Total measured = on_time + breached (pending are not yet resolved)
+          const measured = (p.on_time || 0) + (p.breached || 0);
+          const progressPct = measured > 0 ? Math.round(((p.on_time || 0) / measured) * 100) : (rate !== null ? rate : 0);
           return (
             <div key={pk} className="card" style={{ flex: 1, minWidth: 200, borderTop: `4px solid ${rateColor}` }}>
               <div style={{ fontSize: 22, marginBottom: 4 }}>{PHASE_ICONS[pk]}</div>
               <div style={{ fontSize: 12, fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 6 }}>
                 {p.label}
               </div>
-              <div style={{ fontSize: 28, fontWeight: 800, color: rateColor, marginBottom: 4 }}>
+              <div style={{ fontSize: 28, fontWeight: 800, color: rateColor, marginBottom: 2 }}>
                 {rate !== null ? `${rate}%` : "—"}
               </div>
-              <div style={{ fontSize: 11, color: "var(--text-muted)", marginBottom: 12 }}>compliance rate</div>
-              <div style={{ fontSize: 11, color: "var(--text-secondary)" }}>{p.description}</div>
-              <div style={{ marginTop: 10, display: "flex", gap: 8, flexWrap: "wrap" }}>
+              <div style={{ fontSize: 11, color: "var(--text-muted)", marginBottom: 10 }}>compliance rate</div>
+
+              {/* Progress bar */}
+              <div style={{ marginBottom: 12 }}>
+                <div style={{ height: 7, background: "var(--bg-subtle)", borderRadius: 99, overflow: "hidden" }}>
+                  <div style={{
+                    height: "100%", borderRadius: 99,
+                    width: `${Math.min(100, progressPct)}%`,
+                    background: rateColor,
+                    transition: "width 0.8s ease",
+                  }} />
+                </div>
+                <div style={{ display: "flex", justifyContent: "space-between", fontSize: 10, color: "var(--text-muted)", marginTop: 3 }}>
+                  <span>0%</span>
+                  <span style={{ fontWeight: 700, color: rateColor }}>{progressPct}%</span>
+                  <span>100%</span>
+                </div>
+              </div>
+
+              <div style={{ fontSize: 11, color: "var(--text-secondary)", marginBottom: 10 }}>{p.description}</div>
+              <div style={{ marginTop: 4, display: "flex", gap: 8, flexWrap: "wrap" }}>
                 <span style={{ fontSize: 11, padding: "3px 8px", borderRadius: 12, background: "#dcfce7", color: "#16a34a", fontWeight: 700 }}>✓ {p.on_time} on time</span>
                 {p.breached > 0 && <span style={{ fontSize: 11, padding: "3px 8px", borderRadius: 12, background: "#ffe4e6", color: "#e11d48", fontWeight: 700 }}>✗ {p.breached} breached</span>}
                 {p.pending > 0 && <span style={{ fontSize: 11, padding: "3px 8px", borderRadius: 12, background: "var(--bg-subtle)", color: "var(--text-muted)", fontWeight: 700 }}>⏳ {p.pending} pending</span>}
