@@ -1138,7 +1138,7 @@ function QuotationForm({ job, currentParts, onSubmit, onCancel }) {
 // ══════════════════════════════════════════════════════════════════════════════
 function PartsView({ job, onDone, setView }) {
   const [currentParts, setCurrentParts] = useState(() =>
-    (job.predictedParts || []).map(p => ({ ...p, quantity: 1, isPredicted: true }))
+    (job.predictedParts || []).map(p => ({ ...p, quantity: p.quantity || 1, isPredicted: true }))
   );
   const [newPartName, setNewPartName]     = useState("");
   const [newPartPrice, setNewPartPrice]   = useState("");
@@ -1160,7 +1160,7 @@ function PartsView({ job, onDone, setView }) {
     setCurrentParts(prev => [...prev, { partId: `MANUAL-${Date.now()}`, name: newPartName, cost: priceNum, quantity: 1, isPredicted: false }]);
     setNewPartName(""); setNewPartPrice("");
   }
-  function resetToAI() { setCurrentParts((job.predictedParts || []).map(p => ({ ...p, quantity: 1, isPredicted: true }))); }
+  function resetToAI() { setCurrentParts((job.predictedParts || []).map(p => ({ ...p, quantity: p.quantity || 1, isPredicted: true }))); }
 
   async function handleQuotationSubmit(quotationData) {
     // Backend sets status to AWAITING_PARTS and creates escalation

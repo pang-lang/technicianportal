@@ -400,12 +400,16 @@ export function TicketDocumentsReview({ ticketId }) {
 
 // ── Service Report display panel ──────────────────────────────────────────────
 function ServiceReportPanel({ report }) {
-    const isWarranty = !!report.isWarranty;
+    // Support both new docs (is_warranty flag) and legacy docs (cost: 0 for all parts = warranty)
+    const isWarranty = report.isWarranty === true ||
+        (report.isWarranty == null &&
+         (report.partsUsed || []).length > 0 &&
+         (report.partsUsed || []).every(p => (p.unitCost || p.cost || 0) === 0));
+
     const totalCost = isWarranty
         ? 0
         : (report.partsUsed || []).reduce((s, p) => {
             const qty = p.quantity || 1;
-            // support both old format (p.cost = line total) and new (p.unitCost × qty)
             const unit = p.unitCost != null ? p.unitCost : (p.cost || 0) / qty;
             return s + unit * qty;
           }, 0);
@@ -495,7 +499,10 @@ function ServiceReportPanel({ report }) {
 
 // ── Quotation display panel ───────────────────────────────────────────────────
 function QuotationPanel({ quotation }) {
+    const isWarranty = quotation.isWarranty || false;
+    // Parts total reflects real costs (for admin reference); customer is charged RM 0 if warranty
     const total = (quotation.parts || []).reduce((s, p) => s + (p.totalCost || p.unitCost || 0), 0);
+    const customerCharge = isWarranty ? 0 : (quotation.totalAmount ?? total);
 
     return (
         <div>
@@ -507,10 +514,19 @@ function QuotationPanel({ quotation }) {
                     <div style={{ fontFamily: "monospace", fontSize: 11, color: "var(--brand)" }}>{quotation.ticketId}</div>
                 </div>
                 <div style={{ textAlign: "right" }}>
-                    <span className="badge" style={{ background: "var(--brand)", color: "#fff", fontSize: 11, marginBottom: 6, display: "block" }}>APPROVED</span>
+                    <span className="badge" style={{ background: isWarranty ? "#0369a1" : "var(--brand)", color: "#fff", fontSize: 11, marginBottom: 6, display: "block" }}>
+                        {isWarranty ? "WARRANTY" : "APPROVED"}
+                    </span>
                     <div style={{ fontSize: 11, color: "var(--text-muted)" }}>{fmt(quotation.createdAt)}</div>
                 </div>
             </div>
+
+            {/* Warranty notice */}
+            {isWarranty && (
+                <div style={{ padding: "10px 14px", background: "#e0f2fe", borderRadius: 8, border: "1px solid #bae6fd", marginBottom: 16, fontSize: 12, fontWeight: 600, color: "#0369a1" }}>
+                    ✅ Under Warranty — Parts cost (RM {total.toFixed(2)}) fully covered. Customer charged RM 0.00.
+                </div>
+            )}
 
             {/* Customer details */}
             <div className="card mb-16" style={{ background: "var(--brand-light)", borderColor: "var(--brand-mid)" }}>
@@ -528,8 +544,8 @@ function QuotationPanel({ quotation }) {
                             <tr>
                                 <th style={{ padding: "8px 12px", textAlign: "left", fontSize: 11, fontWeight: 700, color: "var(--text-secondary)" }}>ITEM</th>
                                 <th style={{ padding: "8px 12px", textAlign: "center", fontSize: 11, fontWeight: 700, color: "var(--text-secondary)" }}>QTY</th>
-                                <th style={{ padding: "8px 12px", textAlign: "right", fontSize: 11, fontWeight: 700, color: "var(--text-secondary)" }}>UNIT</th>
-                                <th style={{ padding: "8px 12px", textAlign: "right", fontSize: 11, fontWeight: 700, color: "var(--text-secondary)" }}>TOTAL</th>
+                                <th style={{ padding: "8px 12px", textAlign: "right", fontSize: 11, fontWeight: 700, color: "var(--text-secondary)" }}>UNIT (RM)</th>
+                                <th style={{ padding: "8px 12px", textAlign: "right", fontSize: 11, fontWeight: 700, color: "var(--text-secondary)" }}>TOTAL (RM)</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -540,14 +556,25 @@ function QuotationPanel({ quotation }) {
                                         <span style={{ fontFamily: "monospace", fontSize: 10, color: "var(--text-muted)", marginLeft: 6 }}>({p.partId})</span>
                                     </td>
                                     <td style={{ padding: "8px 12px", textAlign: "center" }}>{p.quantity || 1}</td>
-                                    <td style={{ padding: "8px 12px", textAlign: "right" }}>RM {(p.unitCost || 0).toFixed(2)}</td>
-                                    <td style={{ padding: "8px 12px", textAlign: "right", fontWeight: 600 }}>RM {(p.totalCost || p.unitCost || 0).toFixed(2)}</td>
+                                    <td style={{ padding: "8px 12px", textAlign: "right" }}>{(p.unitCost || 0).toFixed(2)}</td>
+                                    <td style={{ padding: "8px 12px", textAlign: "right", fontWeight: 600 }}>{(p.totalCost || p.unitCost || 0).toFixed(2)}</td>
                                 </tr>
                             ))}
                             <tr style={{ background: "var(--bg-subtle)", borderTop: "1.5px solid var(--border)" }}>
-                                <td colSpan={3} style={{ padding: "8px 12px", fontWeight: 700 }}>Total Amount</td>
-                                <td style={{ padding: "8px 12px", textAlign: "right", fontWeight: 800, color: "var(--brand)", fontSize: 15 }}>
-                                    RM {(quotation.totalAmount ?? total).toFixed(2)}
+                                <td colSpan={3} style={{ padding: "8px 12px", fontWeight: 700 }}>
+                                    {isWarranty ? "Parts Cost (Covered by Warranty)" : "Total Amount"}
+                                </td>
+                                <td style={{ padding: "8px 12px", textAlign: "right", fontWeight: 800, fontSize: 15 }}>
+                                    {isWarranty ? (
+                                        <>
+                                            <span style={{ textDecoration: "line-through", opacity: 0.5, marginRight: 6, color: "var(--text-secondary)", fontSize: 13 }}>
+                                                RM {total.toFixed(2)}
+                                            </span>
+                                            <span style={{ color: "#16a34a" }}>RM 0.00</span>
+                                        </>
+                                    ) : (
+                                        <span style={{ color: "var(--brand)" }}>RM {customerCharge.toFixed(2)}</span>
+                                    )}
                                 </td>
                             </tr>
                         </tbody>
