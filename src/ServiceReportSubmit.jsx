@@ -231,7 +231,7 @@ export function ServiceReportSubmitView({ job, onReportSubmitted, onDraftComplet
                     <InfoRow label="Customer" value={job.customerName} />
                     <InfoRow label="Ticket" value={job.id} mono accent="var(--brand)" />
                     <InfoRow label="Fault Type" value={job.faultType || "Not logged"} accent="var(--accent)" />
-                    <InfoRow label="Parts Used" value={`${partsUsed.length} item(s) · RM ${totalCost.toFixed(2)}`} />
+                    <InfoRow label="Parts Used" value={`RM ${totalCost.toFixed(2)}`} />
                 </div>
             </div>
 

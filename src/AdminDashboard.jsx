@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { getAdminFeedback, getPartsAnalytics, fetchPendingApprovals, approveOrRejectParts, fetchApprovalHistory } from "./api";
+import { getAdminFeedback, getPartsAnalytics, fetchPendingApprovals, approveOrRejectParts, fetchApprovalHistory, fetchKPISummary } from "./api";
 import { TicketDocumentsReview } from "./ServiceReportSubmit";
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
@@ -201,15 +201,9 @@ function PartsApprovalTab({ partsData: stats }) {
             <span className="badge" style={{ color: warrantyOk ? "var(--brand)" : "var(--accent)", background: warrantyOk ? "var(--brand-light)" : "var(--accent-light)" }}>
               {warrantyOk ? "Under Warranty" : "Warranty Expired"}
             </span>
-            {warrantyOk ? (
-              <span className="badge" style={{ color: "#16a34a", background: "#dcfce7", fontSize: 13, fontWeight: 800 }}>
-                RM 0.00 — Covered
-              </span>
-            ) : (
-              <span className="badge" style={{ color: costHigh ? "var(--accent)" : "var(--brand)", background: costHigh ? "var(--accent-light)" : "var(--brand-light)", fontSize: 13, fontWeight: 800 }}>
-                RM {a.totalCost.toFixed(2)}
-              </span>
-            )}
+            <span className="badge" style={{ color: costHigh ? "var(--accent)" : "var(--brand)", background: costHigh ? "var(--accent-light)" : "var(--brand-light)", fontSize: 13, fontWeight: 800 }}>
+              RM {a.totalCost.toFixed(2)}
+            </span>
           </div>
         </div>
 
@@ -228,9 +222,7 @@ function PartsApprovalTab({ partsData: stats }) {
               <tr style={{ background: "var(--bg-subtle)" }}>
                 <th style={{ padding: "10px 14px", textAlign: "left", fontWeight: 700, fontSize: 11, color: "var(--text-secondary)" }}>PART</th>
                 <th style={{ padding: "10px 14px", textAlign: "left", fontWeight: 700, fontSize: 11, color: "var(--text-secondary)" }}>STOCK</th>
-                <th style={{ padding: "10px 14px", textAlign: "right", fontWeight: 700, fontSize: 11, color: "var(--text-secondary)" }}>
-                  {warrantyOk ? "COST (COVERED)" : "COST"}
-                </th>
+                <th style={{ padding: "10px 14px", textAlign: "right", fontWeight: 700, fontSize: 11, color: "var(--text-secondary)" }}>COST</th>
               </tr>
             </thead>
             <tbody>
@@ -245,16 +237,7 @@ function PartsApprovalTab({ partsData: stats }) {
                     <td style={{ padding: "10px 14px" }}>
                       <span className="badge" style={{ color: stock.color, background: stock.bg, fontSize: 10 }}>{stock.label}</span>
                     </td>
-                    <td style={{ padding: "10px 14px", textAlign: "right", fontWeight: 600 }}>
-                      {warrantyOk ? (
-                        <span>
-                          <span style={{ textDecoration: "line-through", opacity: 0.4, marginRight: 6 }}>RM {Number(p.cost || 0).toFixed(2)}</span>
-                          <span style={{ color: "#16a34a" }}>RM 0.00</span>
-                        </span>
-                      ) : (
-                        `RM ${Number(p.cost || 0).toFixed(2)}`
-                      )}
-                    </td>
+                    <td style={{ padding: "10px 14px", textAlign: "right", fontWeight: 600 }}>RM {Number(p.cost || 0).toFixed(2)}</td>
                   </tr>
                 );
               })}
@@ -449,14 +432,7 @@ function ApprovalHistorySection() {
                               ))}
                             </td>
                             <td style={{ padding: "10px 14px", textAlign: "right", fontWeight: 700, fontSize: 12, color: isApproved ? "var(--brand)" : "var(--text-muted)" }}>
-                              {warrantyOk ? (
-                                <span>
-                                  <span style={{ textDecoration: "line-through", opacity: 0.4, fontSize: 10, display: "block" }}>RM {h.totalCost.toFixed(2)}</span>
-                                  <span style={{ color: "#16a34a" }}>RM 0.00</span>
-                                </span>
-                              ) : (
-                                `RM ${h.totalCost.toFixed(2)}`
-                              )}
+                              RM {h.totalCost.toFixed(2)}
                             </td>
                             <td style={{ padding: "10px 14px" }}>
                               <span className="badge" style={{ color: warrantyOk ? "var(--brand)" : "var(--accent)", background: warrantyOk ? "var(--brand-light)" : "var(--accent-light)", fontSize: 9 }}>
@@ -587,6 +563,199 @@ function ServiceReportsTab() {
 }
 
 
+// ── KPI Tab ───────────────────────────────────────────────────────────────────
+function KPITab() {
+  const [data, setData] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [expanded, setExpanded] = useState(null); // which phase row is open
+
+  const load = useCallback(async () => {
+    setLoading(true); setError(null);
+    try { setData(await fetchKPISummary()); }
+    catch (e) { setError(e.message); }
+    finally { setLoading(false); }
+  }, []);
+
+  useEffect(() => { load(); }, [load]);
+
+  function timeLeft(isoDeadline) {
+    if (!isoDeadline) return { label: "—", over: false };
+    const diff = new Date(isoDeadline).getTime() - Date.now();
+    if (diff <= 0) return { label: "OVERDUE", over: true };
+    const d = Math.floor(diff / 86400000);
+    const h = Math.floor((diff % 86400000) / 3600000);
+    if (d > 0) return { label: `${d}d ${h}h left`, over: false };
+    return { label: `${h}h left`, over: false };
+  }
+
+  function timeAgo(iso) {
+    if (!iso) return "—";
+    const diff = Date.now() - new Date(iso).getTime();
+    const d = Math.floor(diff / 86400000);
+    const h = Math.floor((diff % 86400000) / 3600000);
+    const m = Math.floor((diff % 3600000) / 60000);
+    if (d > 0) return `${d}d ${h}h ago`;
+    if (h > 0) return `${h}h ${m}m ago`;
+    return `${m}m ago`;
+  }
+
+  const PHASE_KEYS = ["kpi1_appointment", "kpi2_attendance", "kpi3_completion"];
+  const PHASE_ICONS = { kpi1_appointment: "📞", kpi2_attendance: "🔧", kpi3_completion: "✅" };
+  const PHASE_WINDOW = { kpi1_appointment: "≤ 2 days", kpi2_attendance: "≤ 7 days", kpi3_completion: "≤ 14 days" };
+
+  if (loading) return (
+    <div className="card animate-in" style={{ textAlign: "center", padding: "60px 20px" }}>
+      <div style={{ width: 40, height: 40, border: "3px solid var(--border)", borderTopColor: "var(--brand)", borderRadius: "50%", animation: "spin 0.8s linear infinite", margin: "0 auto 16px" }} />
+      <p style={{ color: "var(--text-muted)", fontSize: 14 }}>Loading KPI data...</p>
+      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+    </div>
+  );
+
+  if (error) return (
+    <div className="card animate-in" style={{ background: "var(--accent-light)", padding: 20 }}>
+      <div style={{ fontWeight: 700, color: "var(--accent)", marginBottom: 8 }}>Failed to load KPI data</div>
+      <p style={{ fontSize: 13, color: "var(--text-secondary)", marginBottom: 12 }}>{error}</p>
+      <button className="btn btn-outline" onClick={load}>Retry</button>
+    </div>
+  );
+
+  if (!data) return null;
+
+  return (
+    <div className="animate-in">
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 24 }}>
+        <div>
+          <h1 className="display-font" style={{ fontSize: 32, marginBottom: 4 }}>KPI Tracker</h1>
+          <p style={{ color: "var(--text-secondary)" }}>
+            Service phase compliance across {data.total_tickets} active tickets
+          </p>
+        </div>
+        <button className="btn btn-outline" style={{ display: "flex", alignItems: "center", gap: 6 }} onClick={load}>
+          <Icon.refresh /> Refresh
+        </button>
+      </div>
+
+      {/* Phase summary cards */}
+      <div style={{ display: "flex", gap: 16, marginBottom: 32, flexWrap: "wrap" }}>
+        {PHASE_KEYS.map(pk => {
+          const p = data.phases[pk];
+          const rate = p.compliance_rate;
+          const rateColor = rate === null ? "var(--text-muted)" : rate >= 80 ? "#16a34a" : rate >= 60 ? "#e05c2a" : "#e11d48";
+          return (
+            <div key={pk} className="card" style={{ flex: 1, minWidth: 200, borderTop: `4px solid ${rateColor}` }}>
+              <div style={{ fontSize: 22, marginBottom: 4 }}>{PHASE_ICONS[pk]}</div>
+              <div style={{ fontSize: 12, fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 6 }}>
+                {p.label}
+              </div>
+              <div style={{ fontSize: 28, fontWeight: 800, color: rateColor, marginBottom: 4 }}>
+                {rate !== null ? `${rate}%` : "—"}
+              </div>
+              <div style={{ fontSize: 11, color: "var(--text-muted)", marginBottom: 12 }}>compliance rate</div>
+              <div style={{ fontSize: 11, color: "var(--text-secondary)" }}>{p.description}</div>
+              <div style={{ marginTop: 10, display: "flex", gap: 8, flexWrap: "wrap" }}>
+                <span style={{ fontSize: 11, padding: "3px 8px", borderRadius: 12, background: "#dcfce7", color: "#16a34a", fontWeight: 700 }}>✓ {p.on_time} on time</span>
+                {p.breached > 0 && <span style={{ fontSize: 11, padding: "3px 8px", borderRadius: 12, background: "#ffe4e6", color: "#e11d48", fontWeight: 700 }}>✗ {p.breached} breached</span>}
+                {p.pending > 0 && <span style={{ fontSize: 11, padding: "3px 8px", borderRadius: 12, background: "var(--bg-subtle)", color: "var(--text-muted)", fontWeight: 700 }}>⏳ {p.pending} pending</span>}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Per-ticket breakdown */}
+      <Divider label="Ticket Phase Breakdown" />
+      <div className="card" style={{ padding: 0, overflow: "hidden" }}>
+        <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+          <thead>
+            <tr style={{ background: "var(--bg-subtle)" }}>
+              <th style={{ padding: "10px 14px", textAlign: "left", fontWeight: 700, fontSize: 11, color: "var(--text-secondary)" }}>TICKET</th>
+              <th style={{ padding: "10px 14px", textAlign: "left", fontWeight: 700, fontSize: 11, color: "var(--text-secondary)" }}>CUSTOMER</th>
+              <th style={{ padding: "10px 14px", textAlign: "center", fontWeight: 700, fontSize: 11, color: "var(--text-secondary)" }}>
+                📞 KPI 1<br/><span style={{ fontWeight: 400, opacity: 0.7 }}>Book Appt ≤2d</span>
+              </th>
+              <th style={{ padding: "10px 14px", textAlign: "center", fontWeight: 700, fontSize: 11, color: "var(--text-secondary)" }}>
+                🔧 KPI 2<br/><span style={{ fontWeight: 400, opacity: 0.7 }}>Attend ≤7d</span>
+              </th>
+              <th style={{ padding: "10px 14px", textAlign: "center", fontWeight: 700, fontSize: 11, color: "var(--text-secondary)" }}>
+                ✅ KPI 3<br/><span style={{ fontWeight: 400, opacity: 0.7 }}>Complete ≤14d</span>
+              </th>
+              <th style={{ padding: "10px 14px", textAlign: "left", fontWeight: 700, fontSize: 11, color: "var(--text-secondary)" }}>STATUS</th>
+            </tr>
+          </thead>
+          <tbody>
+            {data.tickets.map((t, i) => {
+              const phases = t.phases;
+              function PhaseCell({ pk }) {
+                const p = phases[pk];
+                if (!p) return <td style={{ padding: "10px 14px", textAlign: "center" }}>—</td>;
+                const tl = timeLeft(p.deadline_at);
+                let bg, color, icon, detail;
+                if (p.outcome === "on_time") {
+                  bg = "#dcfce7"; color = "#16a34a"; icon = "✓";
+                  detail = p.achieved_at ? timeAgo(p.achieved_at) : "done";
+                } else if (p.outcome === "breached") {
+                  bg = "#ffe4e6"; color = "#e11d48"; icon = "✗";
+                  detail = p.achieved ? "late" : "overdue";
+                } else {
+                  bg = "var(--bg-subtle)"; color = "var(--text-muted)"; icon = "⏳";
+                  detail = tl.label;
+                }
+                return (
+                  <td style={{ padding: "10px 14px", textAlign: "center" }}>
+                    <div style={{ display: "inline-flex", flexDirection: "column", alignItems: "center", gap: 2 }}>
+                      <span style={{ fontSize: 11, padding: "3px 10px", borderRadius: 12, background: bg, color, fontWeight: 700 }}>
+                        {icon} {p.outcome === "pending" ? `${p.pct_elapsed}%` : p.outcome}
+                      </span>
+                      <span style={{ fontSize: 10, color: "var(--text-muted)" }}>{detail}</span>
+                    </div>
+                  </td>
+                );
+              }
+
+              const STATUS_COLOR = {
+                COMPLETED: { color: "#16a34a", bg: "#dcfce7" },
+                AWAITING_PARTS: { color: "#7c3aed", bg: "#f3e8ff" },
+                PROCEED_JOB: { color: "#0891b2", bg: "#e0f7fa" },
+                JOB_STARTED: { color: "#e05c2a", bg: "#fdf0eb" },
+                APPOINTMENT_BOOKED: { color: "#0d9488", bg: "#ccfbf1" },
+                ACCEPTED: { color: "#0369a1", bg: "#e0f2fe" },
+              };
+              const sc = STATUS_COLOR[t.status] || { color: "var(--text-muted)", bg: "var(--bg-subtle)" };
+
+              return (
+                <tr key={t.ticket_id} style={{ borderTop: "1px solid var(--border)", background: i % 2 === 0 ? "#fff" : "var(--bg-subtle)" }}>
+                  <td style={{ padding: "10px 14px" }}>
+                    <div className="mono" style={{ fontSize: 11, color: "var(--brand)", fontWeight: 700 }}>{t.ticket_id}</div>
+                    <div style={{ fontSize: 10, color: "var(--text-muted)", marginTop: 2 }}>{timeAgo(t.created_at)}</div>
+                  </td>
+                  <td style={{ padding: "10px 14px", fontWeight: 600, fontSize: 12 }}>{t.customer_name}</td>
+                  <PhaseCell pk="kpi1_appointment" />
+                  <PhaseCell pk="kpi2_attendance" />
+                  <PhaseCell pk="kpi3_completion" />
+                  <td style={{ padding: "10px 14px" }}>
+                    <span style={{ fontSize: 11, padding: "3px 8px", borderRadius: 12, background: sc.bg, color: sc.color, fontWeight: 700 }}>
+                      {t.status.replace(/_/g, " ")}
+                    </span>
+                  </td>
+                </tr>
+              );
+            })}
+            {data.tickets.length === 0 && (
+              <tr>
+                <td colSpan={6} style={{ padding: "48px", textAlign: "center", color: "var(--text-muted)" }}>
+                  No active tickets to show.
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+
 // ── Main Component ────────────────────────────────────────────────────────────
 // — onLogout prop from v2 (wired to Logout button instead of window.location.href)
 // — ServiceReportsTab from v1 added back to nav + tab loading logic
@@ -602,7 +771,7 @@ export default function AdminDashboard({ onLogout }) {
   useEffect(() => {
     async function load() {
       // approvals and reports tabs manage their own data fetching internally
-      if (tab === "approvals" || tab === "reports") {
+      if (tab === "approvals" || tab === "reports" || tab === "kpi") {
         setLoading(false);
         return;
       }
@@ -740,6 +909,7 @@ export default function AdminDashboard({ onLogout }) {
           <nav style={{ display: "flex", gap: 32, marginLeft: 48, flex: 1 }}>
             <NavBtn id="approvals" label="Parts Approval" />
             <NavBtn id="reports" label="Service Reports" />
+            <NavBtn id="kpi" label="KPI Tracker" />
             <NavBtn id="parts" label="Parts Analytics" />
             <NavBtn id="feedback" label="Customer Feedback" />
           </nav>
@@ -767,6 +937,11 @@ export default function AdminDashboard({ onLogout }) {
             TAB: SERVICE REPORTS (from v1)
         ════════════════════════════════════════════ */}
         {tab === "reports" && <ServiceReportsTab />}
+
+        {/* ════════════════════════════════════════════
+            TAB: KPI TRACKER
+        ════════════════════════════════════════════ */}
+        {tab === "kpi" && <KPITab />}
 
         {/* ════════════════════════════════════════════
             TAB: CUSTOMER FEEDBACK

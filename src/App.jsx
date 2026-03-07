@@ -287,9 +287,6 @@ function JobDetailPage({ jobId, onBack, onJobMutated }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [view, setView] = useState("detail");
-  // Holds parts freshly returned from the fault-log API so PartsView
-  // never reads from a stale job.predictedParts before onDone refreshes.
-  const [freshParts, setFreshParts] = useState(null);
 
   const loadDetail = useCallback(async (options = {}) => {
     const isSilent = options.silent === true;
@@ -388,6 +385,42 @@ function JobDetailPage({ jobId, onBack, onJobMutated }) {
             <div style={{ width: `${pct}%`, height: "100%", background: pct >= 100 ? "var(--accent)" : "var(--brand)", transition: "width 0.5s ease" }} />
           </div>
         </div>
+
+        {/* ── KPI Phase Indicators ── */}
+        {job.kpiStatus && (() => {
+          const phases = [
+            { key: "kpi1_appointment", icon: "📞", short: "KPI 1 — Book Appt" },
+            { key: "kpi2_attendance",  icon: "🔧", short: "KPI 2 — Attend"    },
+            { key: "kpi3_completion",  icon: "✅", short: "KPI 3 — Complete"  },
+          ];
+          return (
+            <div style={{ marginTop: 16, display: "flex", flexDirection: "column", gap: 8 }}>
+              <div style={{ fontSize: 11, fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 2 }}>
+                KPI Phases
+              </div>
+              {phases.map(({ key, icon, short }) => {
+                const p = job.kpiStatus[key];
+                if (!p) return null;
+                const achieved  = p.achieved;
+                const overdue   = p.overdue;
+                const barColor  = achieved ? "#16a34a" : overdue ? "#e11d48" : "var(--brand)";
+                const label     = achieved ? `✓ done` : overdue ? "OVERDUE" : `${Math.round(p.pct_elapsed)}%`;
+                const labelColor = achieved ? "#16a34a" : overdue ? "#e11d48" : "var(--text-secondary)";
+                return (
+                  <div key={key} style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                    <div style={{ width: 120, fontSize: 11, color: "var(--text-secondary)", display: "flex", alignItems: "center", gap: 4, flexShrink: 0 }}>
+                      <span>{icon}</span> <span>{short}</span>
+                    </div>
+                    <div style={{ flex: 1, height: 6, background: "var(--bg-subtle)", borderRadius: 3, overflow: "hidden" }}>
+                      <div style={{ width: `${p.pct_elapsed}%`, height: "100%", background: barColor, borderRadius: 3, transition: "width 0.5s ease" }} />
+                    </div>
+                    <div style={{ fontSize: 11, fontWeight: 700, color: labelColor, width: 52, textAlign: "right", flexShrink: 0 }}>{label}</div>
+                  </div>
+                );
+              })}
+            </div>
+          );
+        })()}
       </div>
 
       <div style={{ display: "grid", gridTemplateColumns: "1fr 340px", gap: "24px", alignItems: "start" }}>
@@ -484,8 +517,8 @@ function JobDetailPage({ jobId, onBack, onJobMutated }) {
           )}
 
           {/* ── Sub-views ── */}
-          {view === "fault"    && <LogFaultView    job={job} onDone={reloadAfterMutation} setView={setView} setFreshParts={setFreshParts} />}
-          {view === "parts"    && <PartsView       job={job} onDone={reloadAfterMutation} setView={setView} freshParts={freshParts} />}
+          {view === "fault"    && <LogFaultView    job={job} onDone={reloadAfterMutation} setView={setView} />}
+          {view === "parts"    && <PartsView       job={job} onDone={reloadAfterMutation} setView={setView} />}
           {view === "complete" && <CompleteJobView  job={job} onDone={reloadAfterMutation} setView={setView} onBack={onBack} />}
 
           {/* ── STEP 7: COMPLETED — archived documents ── */}
@@ -751,7 +784,7 @@ function AppointmentBookedView({ job, onDone }) {
 // After submit: auto-redirects to PartsView if parts predicted, else shows
 // "no parts" confirmation and lets technician proceed to Complete.
 // ══════════════════════════════════════════════════════════════════════════════
-function LogFaultView({ job, onDone, setView, setFreshParts }) {
+function LogFaultView({ job, onDone, setView }) {
   const [faultType, setFaultType] = useState(job.faultType || "");
   const [notes, setNotes] = useState(job.faultNotes || "");
   const [submitting, setSubmitting] = useState(false);
@@ -776,9 +809,6 @@ function LogFaultView({ job, onDone, setView, setFreshParts }) {
   if (result) {
     const hasParts = result.predictedParts?.length > 0;
     if (hasParts) {
-      // Store the API-fresh parts BEFORE redirecting so PartsView gets the
-      // correct list immediately, without waiting for job reload.
-      setFreshParts(result.predictedParts);
       setView("parts");
       return null;
     }
@@ -908,13 +938,9 @@ function QuotationForm({ job, currentParts, onSubmit, onCancel }) {
           partId: p.partId,
           name: p.name,
           quantity: p.quantity || 1,
-          // Warranty jobs: costs are covered, send 0 so the customer email shows no charge
-          // Always send real costs so they are stored correctly in the DB.
-          // The backend uses isWarranty to show RM 0 in the customer email.
           unitCost: p.cost,
           totalCost: p.cost * (p.quantity || 1),
         })),
-        // Always send real total for DB records; backend shows RM 0 for warranty in email
         totalAmount: total,
         signature,
         createdAt: new Date().toISOString(),
@@ -1035,15 +1061,10 @@ function QuotationForm({ job, currentParts, onSubmit, onCancel }) {
 //
 // isReadOnly when status is AWAITING_PARTS, PROCEED_JOB, or COMPLETED.
 // ══════════════════════════════════════════════════════════════════════════════
-function PartsView({ job, onDone, setView, freshParts }) {
-  const [currentParts, setCurrentParts] = useState(() => {
-    // Use freshParts from the fault-log API response when available — this
-    // avoids a race where job.predictedParts hasn't refreshed yet.
-    // Preserve stored quantity (e.g. manual parts with qty > 1); only
-    // default to 1 for parts that have no quantity set yet (new predictions).
-    const source = freshParts || job.predictedParts || [];
-    return source.map(p => ({ ...p, quantity: p.quantity || 1, isPredicted: true }));
-  });
+function PartsView({ job, onDone, setView }) {
+  const [currentParts, setCurrentParts] = useState(() =>
+    (job.predictedParts || []).map(p => ({ ...p, quantity: 1, isPredicted: true }))
+  );
   const [newPartName, setNewPartName]     = useState("");
   const [newPartPrice, setNewPartPrice]   = useState("");
   const [showQuotation, setShowQuotation] = useState(false);
@@ -1064,7 +1085,7 @@ function PartsView({ job, onDone, setView, freshParts }) {
     setCurrentParts(prev => [...prev, { partId: `MANUAL-${Date.now()}`, name: newPartName, cost: priceNum, quantity: 1, isPredicted: false }]);
     setNewPartName(""); setNewPartPrice("");
   }
-  function resetToAI() { setCurrentParts((freshParts || job.predictedParts || []).map(p => ({ ...p, quantity: 1, isPredicted: true }))); }
+  function resetToAI() { setCurrentParts((job.predictedParts || []).map(p => ({ ...p, quantity: 1, isPredicted: true }))); }
 
   async function handleQuotationSubmit(quotationData) {
     // Backend sets status to AWAITING_PARTS and creates escalation

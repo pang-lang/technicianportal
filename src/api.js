@@ -93,6 +93,11 @@ function normalizeJobDetail(d) {
         report: d.report || null,
         appointmentDate: d.appointment_date || null,
         customerPhone: d.customer_phone || "",
+        // KPI phase data
+        kpi1AppointmentAchievedAt: d.kpi1_appointment_achieved_at || null,
+        kpi2AttendanceAchievedAt:  d.kpi2_attendance_achieved_at  || null,
+        kpi3CompletionAchievedAt:  d.kpi3_completion_achieved_at  || null,
+        kpiStatus: d.kpi_status || null,
     };
 }
 
@@ -102,7 +107,6 @@ function normalizePart(p) {
         name: p.name,
         stock: (p.stock || "UNKNOWN").toUpperCase(),
         cost: p.cost || 0,
-        quantity: p.quantity || 1,
     };
 }
 
@@ -409,4 +413,10 @@ export async function bookAppointment(ticketId, appointmentDate, notes = "") {
 /** For warranty jobs — request parts approval directly without quotation */
 export async function requestPartsApproval(ticketId) {
     return apiFetch(`/portal/tickets/${ticketId}/request-parts-approval`, { method: "POST" });
+}
+// ── KPI Summary (Admin) ───────────────────────────────────────────────────────
+export async function fetchKPISummary() {
+    const res = await fetch(`${API_BASE}/admin/kpi-summary`);
+    if (!res.ok) throw new Error("Failed to fetch KPI summary");
+    return res.json();
 }
