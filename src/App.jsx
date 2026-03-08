@@ -377,7 +377,7 @@ function JobDetailPage({ jobId, allJobs = [], onBack, onJobMutated }) {
           </p>
         </div>
         {/* photo attachments */}
-        {photos.length > 0 && (
+        {job.photos.length > 0 && (
           <div style={{ marginTop: 16, padding: "20px", background: "var(--bg-subtle)", borderRadius: "12px" }}>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
               <div className="stat-label" style={{ marginTop: 0 }}>
@@ -387,7 +387,7 @@ function JobDetailPage({ jobId, allJobs = [], onBack, onJobMutated }) {
                 fontSize: 11, fontWeight: 700, color: "var(--text-muted)",
                 background: "var(--border)", borderRadius: 20, padding: "2px 10px",
               }}>
-                {photos.length} {photos.length === 1 ? "photo" : "photos"}
+                {job.photos.length} {job.photos.length === 1 ? "photo" : "photos"}
               </span>
             </div>
             <div style={{
@@ -395,7 +395,7 @@ function JobDetailPage({ jobId, allJobs = [], onBack, onJobMutated }) {
               gridTemplateColumns: "repeat(auto-fill, minmax(110px, 1fr))",
               gap: 10,
             }}>
-              {photos.map((url, idx) => (
+              {job.photos.map((url, idx) => (
                 <button
                   key={idx}
                   onClick={() => setLightboxUrl(url)}
