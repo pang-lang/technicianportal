@@ -376,6 +376,91 @@ function JobDetailPage({ jobId, allJobs = [], onBack, onJobMutated }) {
             {job.complaintText}
           </p>
         </div>
+        {/* photo attachments */}
+        {photos.length > 0 && (
+          <div style={{ marginTop: 16, padding: "20px", background: "var(--bg-subtle)", borderRadius: "12px" }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
+              <div className="stat-label" style={{ marginTop: 0 }}>
+                📷 Customer Photos
+              </div>
+              <span style={{
+                fontSize: 11, fontWeight: 700, color: "var(--text-muted)",
+                background: "var(--border)", borderRadius: 20, padding: "2px 10px",
+              }}>
+                {photos.length} {photos.length === 1 ? "photo" : "photos"}
+              </span>
+            </div>
+            <div style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(auto-fill, minmax(110px, 1fr))",
+              gap: 10,
+            }}>
+              {photos.map((url, idx) => (
+                <button
+                  key={idx}
+                  onClick={() => setLightboxUrl(url)}
+                  style={{
+                    display: "block", width: "100%",
+                    aspectRatio: "1 / 1",
+                    borderRadius: 10, overflow: "hidden",
+                    border: "2px solid var(--border)",
+                    background: "#f3f4f6",
+                    cursor: "zoom-in", padding: 0,
+                    transition: "border-color 0.15s, transform 0.15s",
+                    position: "relative",
+                  }}
+                  onMouseEnter={e => {
+                    e.currentTarget.style.borderColor = "var(--brand)";
+                    e.currentTarget.style.transform = "scale(1.03)";
+                  }}
+                  onMouseLeave={e => {
+                    e.currentTarget.style.borderColor = "var(--border)";
+                    e.currentTarget.style.transform = "scale(1)";
+                  }}
+                  title={`Photo ${idx + 1} — click to enlarge`}
+                >
+                  <img
+                    src={url}
+                    alt={`Complaint photo ${idx + 1}`}
+                    style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
+                    onError={e => {
+                      e.target.style.display = "none";
+                      e.target.parentElement.style.display = "flex";
+                      e.target.parentElement.style.flexDirection = "column";
+                      e.target.parentElement.style.alignItems = "center";
+                      e.target.parentElement.style.justifyContent = "center";
+                      e.target.parentElement.innerHTML = `
+                        <span style="font-size:26px;margin-bottom:4px">🖼️</span>
+                        <span style="font-size:10px;color:#9ca3af">Photo ${idx + 1}</span>`;
+                    }}
+                  />
+                  {/* Zoom hint overlay */}
+                  <div style={{
+                    position: "absolute", inset: 0,
+                    background: "rgba(0,0,0,0)",
+                    display: "flex", alignItems: "center", justifyContent: "center",
+                    transition: "background 0.15s",
+                    fontSize: 18, color: "transparent",
+                  }}
+                    onMouseEnter={e => {
+                      e.currentTarget.style.background = "rgba(0,0,0,0.25)";
+                      e.currentTarget.style.color = "#fff";
+                      e.currentTarget.innerText = "🔍";
+                    }}
+                    onMouseLeave={e => {
+                      e.currentTarget.style.background = "rgba(0,0,0,0)";
+                      e.currentTarget.style.color = "transparent";
+                      e.currentTarget.innerText = "";
+                    }}
+                  />
+                </button>
+              ))}
+            </div>
+            <div style={{ marginTop: 10, fontSize: 11, color: "var(--text-muted)" }}>
+              Click any photo to enlarge · Submitted by customer with complaint
+            </div>
+          </div>
+        )}
 
         <div style={{ marginTop: 24 }}>
           <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, marginBottom: 8, fontWeight: 700 }}>
