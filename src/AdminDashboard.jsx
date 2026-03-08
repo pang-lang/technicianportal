@@ -313,10 +313,10 @@ function PartsApprovalTab({ partsData: stats }) {
       </div>
 
       <div style={{ display: "flex", gap: 16, marginBottom: 32, flexWrap: "wrap" }}>
-        <StatCard label="Parts in Catalogue" value={parts.total_catalogue_parts || 0} sub="All tracked parts" />
-        <StatCard label="Available" value={parts.stock_summary?.available || 0} sub="In stock" accent="#16a34a" />
-        <StatCard label="Low Stock" value={parts.stock_summary?.low || 0} sub="Needs reorder" accent="#f59e0b" />
-        <StatCard label="Out of Stock" value={parts.stock_summary?.out || 0} sub="Urgent restock" accent="#dc2626" />
+        <StatCard label="Parts in Catalogue" value={stats?.total_catalogue_parts || 0} sub="All tracked parts" />
+        <StatCard label="Available" value={stats?.stock_summary?.available || 0} sub="In stock" accent="#16a34a" />
+        <StatCard label="Low Stock" value={stats?.stock_summary?.low || 0} sub="Needs reorder" accent="#f59e0b" />
+        <StatCard label="Out of Stock" value={stats?.stock_summary?.out || 0} sub="Urgent restock" accent="#dc2626" />
       </div>
 
       <Divider label="Awaiting Authorization" />
