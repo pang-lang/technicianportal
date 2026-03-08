@@ -330,6 +330,54 @@ function JobDetailPage({ jobId, allJobs = [], onBack, onJobMutated }) {
 
   return (
     <div className="animate-in">
+      {lightboxUrl && (
+        <div
+          onClick={() => setLightboxUrl(null)}
+          style={{
+            position: "fixed", inset: 0, zIndex: 1000,
+            background: "rgba(0,0,0,0.85)",
+            display: "flex", alignItems: "center", justifyContent: "center",
+            cursor: "zoom-out",
+            padding: 24,
+          }}
+        >
+          <button
+            onClick={() => setLightboxUrl(null)}
+            style={{
+              position: "absolute", top: 20, right: 24,
+              background: "rgba(255,255,255,0.15)", border: "none",
+              color: "#fff", borderRadius: "50%", width: 36, height: 36,
+              fontSize: 20, cursor: "pointer", lineHeight: 1,
+              display: "flex", alignItems: "center", justifyContent: "center",
+            }}
+          >✕</button>
+          <img
+            src={lightboxUrl}
+            alt="Full size"
+            onClick={e => e.stopPropagation()}
+            style={{
+              maxWidth: "90vw", maxHeight: "88vh",
+              objectFit: "contain", borderRadius: 12,
+              boxShadow: "0 24px 64px rgba(0,0,0,0.6)",
+            }}
+          />
+          <a
+            href={lightboxUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={e => e.stopPropagation()}
+            style={{
+              position: "absolute", bottom: 24,
+              background: "rgba(255,255,255,0.15)", color: "#fff",
+              padding: "8px 18px", borderRadius: 20, fontSize: 13,
+              textDecoration: "none", border: "1px solid rgba(255,255,255,0.3)",
+            }}
+          >
+            ↗ Open original
+          </a>
+        </div>
+      )}
+
       <button className="btn btn-outline mb-16" onClick={onBack} style={{ display: "flex", alignItems: "center", gap: 6 }}>
         <Icon.back style={{ width: 16 }} /> Back to Jobs
       </button>
