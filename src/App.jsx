@@ -288,6 +288,7 @@ function JobDetailPage({ jobId, allJobs = [], onBack, onJobMutated }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [view, setView] = useState("detail");
+  const [lightboxUrl, setLightboxUrl] = useState(null);
 
   const loadDetail = useCallback(async (options = {}) => {
     const isSilent = options.silent === true;
