@@ -381,7 +381,7 @@ function JobDetailPage({ jobId, allJobs = [], onBack, onJobMutated }) {
           <div style={{ marginTop: 16, padding: "20px", background: "var(--bg-subtle)", borderRadius: "12px" }}>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
               <div className="stat-label" style={{ marginTop: 0 }}>
-                📷 Customer Photos
+                Customer Photos
               </div>
               <span style={{
                 fontSize: 11, fontWeight: 700, color: "var(--text-muted)",
