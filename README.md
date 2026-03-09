@@ -1,16 +1,48 @@
-# React + Vite
+# Fiamma Technician Portal & Admin Dashboard
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+A comprehensive field operations management system designed for appliance service technicians and administrative supervisors. This portal streamlines the end-to-end service lifecycle—from ticket assignment and appointment booking to AI-led diagnostics, parts procurement, and final service reporting.
 
-Currently, two official plugins are available:
+## 🛠 Features
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+### 🔧 For Technicians
+- **Daily Operations**: Manage assigned service tickets with priority and SLA tracking.
+- **Appointment Calendar**: Month-view calendar with automated 2-hour clash detection for bookings.
+- **AI-Led Fault Logging**: System-assisted fault diagnostics with predictive spare parts suggestions.
+- **Service Workflows**: Integrated flow for Quotation → Manager Approval → Repair → Service Report.
+- **Digital Signatures**: Capture customer authorization and work completion signatures on-device.
+- **WhatsApp Integration**: One-click communication with customers for bookings and reminders.
 
-## React Compiler
+### 📊 For Administrators
+- **KPI Tracker**: Real-time compliance monitoring across three critical phases:
+    1. **KPI 1: Appointment** (Booking within 2 days)
+    2. **KPI 2: Attendance** (On-site within 7 days)
+    3. **KPI 3: Completion** (Job closed within 14 days)
+- **Parts Approval Queue**: Centralized hub for authorizing field part requests with stock visibility.
+- **Service Report Archive**: Review technical work notes, parts used, and verified customer signatures.
+- **Parts Analytics**: Strategic insights into high-demand components and stock health summary.
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+## 🔄 The Job Lifecycle
 
-## Expanding the ESLint configuration
+Service tickets flow through 7 distinct operational stages:
+1. **Pending Acceptance**: Ticket assigned to technician for review.
+2. **Accepted**: Technician acknowledges the job.
+3. **Appointment Booked**: Schedule confirmed with customer (KPI 1 window).
+4. **Job Started**: Technician on-site and diagnostics logged (KPI 2 window).
+5. **Awaiting Parts**: Parts request sent for manager authorization.
+6. **Proceed Job**: Manager approved parts; technician ready to install.
+7. **Completed**: Job closed, report submitted, and archived (KPI 3 window).
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+## 💻 Tech Stack
+
+- **Frontend**: React 18, Vite
+- **Styling**: Vanilla CSS with modern Glassmorphism and responsive layout.
+- **Communication**: RESTful API integration with "silent" background data reloads for UI persistence.
+- **Tools**: Lucide-inspired SVG icon system, Signature Pad integration.
+
+## 🚀 Getting Started
+
+1. **Install Dependencies**: `npm install`
+2. **Run Dev Server**: `npm run dev`
+3. **Build Profile**: `npm run build`
+
+
