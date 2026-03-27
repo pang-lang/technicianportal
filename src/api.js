@@ -88,6 +88,7 @@ function normalizeJobDetail(d) {
         completedAt: d.completed_at,
         compensationCode: d.compensation_code,
         notes: d.notes || [],
+        photos: d.photo_url ? (Array.isArray(d.photo_url) ? d.photo_url : [d.photo_url]) : [],
         address: "",
         serialNumber: d.product_id,
         // Added for service report review
