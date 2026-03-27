@@ -219,11 +219,12 @@ function MyJobsPage({ jobs, stats, loading, error, onSelectJob, onRetry }) {
                 <span style={{ color: sla.over ? "var(--accent)" : "var(--text-secondary)", fontWeight: 600 }}>{sla.label}</span>
               </div>
               <div style={{ height: 6, background: "var(--bg-subtle)", borderRadius: 3, overflow: "hidden" }}>
-                <div style={{ width: `${pct}%`, height: "100%", background: pct >= 100 ? "var(--accent)" : "var(--brand)", transition: "width 0.5s ease" }} />
+                <div style={{ width: `${pct}%`, height: "100%", background: job.status === "COMPLETED" ? "#16a34a" : pct >= 100 ? "var(--accent)" : "var(--brand)", transition: "width 0.5s ease" }} />
               </div>
             </div>
             <div style={{ fontSize: 12, color: "var(--text-muted)", display: "flex", alignItems: "center", gap: 4 }}>
-              <Icon.clock style={{ width: 14 }} /> {job.slaBreached ? "BREACHED" : sla.label}
+              <Icon.clock style={{ width: 14 }} /> 
+              {job.status === "COMPLETED" ? "✓ Completed" : job.slaBreached ? "BREACHED" : sla.label}
             </div>
           </div>
         </div>
@@ -383,7 +384,7 @@ function JobDetailPage({ jobId, allJobs = [], onBack, onJobMutated }) {
             <span style={{ color: sla.over ? "var(--accent)" : "inherit" }}>{sla.label} ({pct}%)</span>
           </div>
           <div style={{ height: 8, background: "var(--bg-subtle)", borderRadius: 4, overflow: "hidden" }}>
-            <div style={{ width: `${pct}%`, height: "100%", background: pct >= 100 ? "var(--accent)" : "var(--brand)", transition: "width 0.5s ease" }} />
+            <div style={{ width: `${pct}%`, height: "100%", background: job.status === "COMPLETED" ? "#16a34a" : pct >= 100 ? "var(--accent)" : "var(--brand)", transition: "width 0.5s ease" }} />
           </div>
         </div>
 
